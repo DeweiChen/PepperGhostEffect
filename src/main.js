@@ -132,27 +132,27 @@ class PepperGhostApp {
             !document.mozFullScreenElement && 
             !document.msFullscreenElement) {
             // Enter fullscreen
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
+            const app = document.getElementById("app");
+            if (app.requestFullscreen) {
+                app.requestFullscreen();
+            } else if (app.webkitRequestFullscreen) { // Safari
+                app.webkitRequestFullscreen();
+            } else if (app.msRequestFullscreen) { // IE11
+                app.msRequestFullscreen();
             }
+            // Fallback immediate add in case event is delayed / not firing on iOS
+            if (app) app.classList.add('fullscreen-mode');
         } else {
             // Exit fullscreen
             if (document.exitFullscreen) {
                 document.exitFullscreen();
             } else if (document.webkitExitFullscreen) {
                 document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
             } else if (document.msExitFullscreen) {
                 document.msExitFullscreen();
             }
+            const app = document.getElementById('app');
+            if (app) app.classList.remove('fullscreen-mode');
         }
     }
     
@@ -164,6 +164,12 @@ class PepperGhostApp {
                                document.msFullscreenElement);
         
         fullscreenBtn.textContent = isFullscreen ? 'Exit Fullscreen' : 'Toggle Fullscreen';
+        // Sync class with real state
+        const app = document.getElementById('app');
+        if (app) {
+            if (isFullscreen) app.classList.add('fullscreen-mode');
+            else app.classList.remove('fullscreen-mode');
+        }
         
         // Trigger resize handling to adjust canvas
         setTimeout(() => {

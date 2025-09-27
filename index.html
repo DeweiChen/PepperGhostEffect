@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
     <title>Pepper Ghost Effect - Four Quadrant 3D Viewer</title>
     <style>
         * {
@@ -14,6 +17,10 @@
         html {
             background: #000 !important;
             background-color: #000 !important;
+            /* Force override all safe areas */
+            padding: 0;
+            margin: 0;
+            height: 100%;
         }
         
         body {
@@ -24,14 +31,28 @@
             overflow: hidden;
             margin: 0;
             padding: 0;
+            height: 100%;
+            /* iOS Safari specific handling */
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
         }
         
         #app {
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             width: 100vw;
             height: 100vh;
             background: #000 !important;
             background-color: #000 !important;
+            /* Force extend to all safe areas */
+            padding: 0;
+            margin: 0;
         }
         
         #canvas {
@@ -54,12 +75,29 @@
         }
         
         /* Hide controls in fullscreen for clean projection */
-        :fullscreen .controls,
-        :-webkit-full-screen .controls,
-        :-moz-full-screen .controls,
-        :-ms-fullscreen .controls {
-            display: none;
+        #app:fullscreen *,
+        #app:-webkit-full-screen *,
+        #app:-moz-full-screen *,
+        #app:-ms-fullscreen * {
+            display: none !important;
         }
+        
+        /* Show only canvas in fullscreen */
+        #app:fullscreen #canvas,
+        #app:-webkit-full-screen #canvas,
+        #app:-moz-full-screen #canvas,
+        #app:-ms-fullscreen #canvas {
+            display: block !important;
+        }
+        
+        /* Fallback: explicit class when JS detects fullscreen (or forced) */
+        #app.fullscreen-mode .controls,
+        #app.fullscreen-mode .control-group,
+        #app.fullscreen-mode .quadrant-labels,
+        #app.fullscreen-mode .info {
+            display: none !important;
+        }
+        #app.fullscreen-mode #canvas { display:block !important; }
         
         .control-group {
             margin-bottom: 15px;
