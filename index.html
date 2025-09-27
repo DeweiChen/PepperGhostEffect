@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pepper Ghost Effect - Four Quadrant 3D Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #app {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 200px;
+            margin-right: 10px;
+        }
+        
+        select, button {
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .quadrant-labels {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        .label-top-center, .label-bottom-center, 
+        .label-middle-left, .label-middle-right {
+            position: absolute;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <canvas id="canvas"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Shape:</label>
+                <select id="shapeSelect">
+                    <option value="torusKnot">Torus Knot</option>
+                    <option value="sphere">Sphere</option>
+                    <option value="cube">Cube</option>
+                    <option value="dodecahedron">Dodecahedron</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Rotation Speed:</label>
+                <input type="range" id="rotationSpeed" min="0" max="0.02" step="0.001" value="0.005">
+                <span id="speedValue">0.005</span>
+            </div>
+            
+            <div class="control-group">
+                <label>Camera Distance:</label>
+                <input type="range" id="cameraDistance" min="2" max="8" step="0.1" value="3">
+                <span id="distanceValue">3.5</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="resetBtn">Reset</button>
+            </div>
+        </div>
+        
+        <div class="quadrant-labels">
+            <div class="label-top-center" style="top: 5%; left: 50%; transform: translateX(-50%);">Top View</div>
+            <div class="label-bottom-center" style="bottom: 5%; left: 50%; transform: translateX(-50%);">Bottom View</div>
+            <div class="label-middle-left" style="top: 50%; left: 5%; transform: translateY(-50%);">Left View</div>
+            <div class="label-middle-right" style="top: 50%; right: 5%; transform: translateY(-50%);">Right View</div>
+        </div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
