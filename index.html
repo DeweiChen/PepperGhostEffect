@@ -11,23 +11,35 @@
             box-sizing: border-box;
         }
         
+        html {
+            background: #000 !important;
+            background-color: #000 !important;
+        }
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #000;
+            background: #000 !important;
+            background-color: #000 !important;
             color: #fff;
             overflow: hidden;
+            margin: 0;
+            padding: 0;
         }
         
         #app {
             position: relative;
             width: 100vw;
             height: 100vh;
+            background: #000 !important;
+            background-color: #000 !important;
         }
         
         #canvas {
             display: block;
             width: 100%;
             height: 100%;
+            background: #000 !important;
+            background-color: #000 !important;
         }
         
         .controls {
@@ -35,10 +47,18 @@
             top: 20px;
             left: 20px;
             z-index: 100;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.9);
             padding: 15px;
             border-radius: 8px;
             backdrop-filter: blur(10px);
+        }
+        
+        /* Hide controls in fullscreen for clean projection */
+        :fullscreen .controls,
+        :-webkit-full-screen .controls,
+        :-moz-full-screen .controls,
+        :-ms-fullscreen .controls {
+            display: none;
         }
         
         .control-group {
@@ -47,6 +67,25 @@
         
         .control-group:last-child {
             margin-bottom: 0;
+        }
+        
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            margin: 0 5px 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        button:active {
+            background: rgba(255, 255, 255, 0.4);
         }
         
         label {
@@ -89,9 +128,17 @@
             font-size: 12px;
             font-weight: bold;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.8);
             padding: 4px 8px;
             border-radius: 4px;
+        }
+        
+        /* Hide labels in fullscreen for clean projection */
+        :fullscreen .quadrant-labels,
+        :-webkit-full-screen .quadrant-labels,
+        :-moz-full-screen .quadrant-labels,
+        :-ms-fullscreen .quadrant-labels {
+            display: none;
         }
         
         .info {
@@ -135,14 +182,8 @@
             
             <div class="control-group">
                 <button id="resetBtn">Reset</button>
+                <button id="fullscreenBtn">Toggle Fullscreen</button>
             </div>
-        </div>
-        
-        <div class="quadrant-labels">
-            <div class="label-top-center" style="top: 5%; left: 50%; transform: translateX(-50%);">Top View</div>
-            <div class="label-bottom-center" style="bottom: 5%; left: 50%; transform: translateX(-50%);">Bottom View</div>
-            <div class="label-middle-left" style="top: 50%; left: 5%; transform: translateY(-50%);">Left View</div>
-            <div class="label-middle-right" style="top: 50%; right: 5%; transform: translateY(-50%);">Right View</div>
         </div>
     </div>
     

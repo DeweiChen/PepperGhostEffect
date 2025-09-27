@@ -3,7 +3,7 @@ import * as THREE from 'three';
 export class SceneManager {
     constructor() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x222222);  // Dark gray instead of pure black
+        this.scene.background = new THREE.Color(0x000000);  // Pure black for projection
         
         this.currentMesh = null;
         this.setupLighting();

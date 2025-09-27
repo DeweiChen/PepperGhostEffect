@@ -59,10 +59,30 @@ class PepperGhostApp {
             distanceValue.textContent = distance.toFixed(1);
         });
         
-        // Reset button
+                // Reset button
         const resetBtn = document.getElementById('resetBtn');
         resetBtn.addEventListener('click', () => {
-            this.resetToDefaults();
+            this.resetCamera();
+        });
+        
+        // Fullscreen button
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        fullscreenBtn.addEventListener('click', () => {
+            this.toggleFullscreen();
+        });
+        
+        // Listen for fullscreen changes
+        document.addEventListener('fullscreenchange', () => {
+            this.handleFullscreenChange();
+        });
+        document.addEventListener('webkitfullscreenchange', () => {
+            this.handleFullscreenChange();
+        });
+        document.addEventListener('mozfullscreenchange', () => {
+            this.handleFullscreenChange();
+        });
+        document.addEventListener('MSFullscreenChange', () => {
+            this.handleFullscreenChange();
         });
         
         // Keyboard controls
@@ -74,6 +94,9 @@ class PepperGhostApp {
                     break;
                 case 'KeyR':
                     this.resetToDefaults();
+                    break;
+                case 'KeyF':
+                    this.toggleFullscreen();
                     break;
             }
         });
@@ -101,6 +124,55 @@ class PepperGhostApp {
     
     toggleAnimation() {
         this.isAnimating = !this.isAnimating;
+    }
+    
+    toggleFullscreen() {
+        if (!document.fullscreenElement && 
+            !document.webkitFullscreenElement && 
+            !document.mozFullScreenElement && 
+            !document.msFullscreenElement) {
+            // Enter fullscreen
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        } else {
+            // Exit fullscreen
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+    }
+    
+    handleFullscreenChange() {
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const isFullscreen = !!(document.fullscreenElement || 
+                               document.webkitFullscreenElement || 
+                               document.mozFullScreenElement || 
+                               document.msFullscreenElement);
+        
+        fullscreenBtn.textContent = isFullscreen ? 'Exit Fullscreen' : 'Toggle Fullscreen';
+        
+        // Trigger resize handling to adjust canvas
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 100);
+    }
+    
+    resetCamera() {
+        this.cameraManager.updateDistance(3.5);
     }
     
     setupResizeHandling() {

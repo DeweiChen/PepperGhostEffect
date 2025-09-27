@@ -13,9 +13,11 @@ export class RenderManager {
         this.renderer = new THREE.WebGLRenderer({ 
             canvas, 
             antialias: true,
-            alpha: true
+            alpha: false
         });
         
+        // 设置黑色背景
+        this.renderer.setClearColor(0x000000, 1.0);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setScissorTest(true);
