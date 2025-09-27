@@ -91,4 +91,4 @@ jspm_packages/
 .tern-port
 
 # github
-.github/
+.github/copilot-instructions.md
