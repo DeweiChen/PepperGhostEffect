@@ -32,6 +32,7 @@ class PepperGhostApp {
         // Setup controls
         this.setupControls();
         this.setupViewToggle();
+        this.setupCameraInteraction();
         
         // Start animation loop
         this.animate();
@@ -234,6 +235,71 @@ class PepperGhostApp {
         const viewToggleBtn = document.getElementById('viewToggleBtn');
         viewToggleBtn.addEventListener('click', () => {
             this.toggleViewMode();
+        });
+    }
+    
+    setupCameraInteraction() {
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Mouse down on canvas - start dragging
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (this.viewMode === 'single') {
+                isDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                this.canvas.style.cursor = 'grabbing';
+            }
+        });
+        
+        // Mouse move - rotate camera
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || this.viewMode !== 'single') return;
+            
+            const deltaX = e.clientX - lastX;
+            const deltaY = e.clientY - lastY;
+            
+            // Sensitivity: 0.5 degrees per pixel (both axes inverted for natural feel)
+            this.cameraManager.rotateSingleCamera(-deltaX * 0.5, -deltaY * 0.5);
+            
+            lastX = e.clientX;
+            lastY = e.clientY;
+        });
+        
+        // Mouse up - stop dragging
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                this.canvas.style.cursor = 'default';
+            }
+        });
+        
+        // Touch support for mobile
+        this.canvas.addEventListener('touchstart', (e) => {
+            if (this.viewMode === 'single' && e.touches.length === 1) {
+                isDragging = true;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+                e.preventDefault();
+            }
+        });
+        
+        this.canvas.addEventListener('touchmove', (e) => {
+            if (!isDragging || this.viewMode !== 'single' || e.touches.length !== 1) return;
+            
+            const deltaX = e.touches[0].clientX - lastX;
+            const deltaY = e.touches[0].clientY - lastY;
+            
+            this.cameraManager.rotateSingleCamera(-deltaX * 0.5, -deltaY * 0.5);
+            
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            e.preventDefault();
+        });
+        
+        this.canvas.addEventListener('touchend', () => {
+            isDragging = false;
         });
     }
     

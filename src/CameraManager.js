@@ -5,6 +5,14 @@ export class CameraManager {
         this.cameras = [];
         this.singleCamera = null;
         this.distance = 3.5;
+        
+        // User camera state for Single View (persistent across view changes)
+        this.userCameraState = {
+            pitch: 0,      // Vertical angle in degrees (-30° to 60°)
+            yaw: 0,        // Horizontal angle in degrees (unlimited)
+            distance: 3.5  // Distance from origin
+        };
+        
         this.setupCameras();
         this.setupSingleCamera();
     }
@@ -13,20 +21,35 @@ export class CameraManager {
         this.cameras = [];
         
         // Four views: back (top viewport), front (bottom viewport), left, right
+        // Apply user's pitch angle to all four directions
+        const pitch = this.userCameraState.pitch;
+        const pitchRad = THREE.MathUtils.degToRad(pitch);
+        
         const cameraConfigs = [
-            { name: 'Back',   position: [0, 0, this.distance],          up: [0, 1, 0] },   // Back view (top viewport)
-            { name: 'Front',  position: [0, 0, -this.distance],         up: [0, 1, 0] },   // Front view (bottom viewport)
-            { name: 'Left',   position: [-this.distance, 0, 0],         up: [0, 1, 0] },   // Left view
-            { name: 'Right',  position: [this.distance, 0, 0],          up: [0, 1, 0] }    // Right view
+            { name: 'Back',  yaw: 0,   roll: 0 },     // Top: correct ✅
+            { name: 'Front', yaw: 180, roll: 180 },   // Bottom: rotate output 180°
+            { name: 'Left',  yaw: 90,  roll: -90 },   // Left: rotate output -90° (left)
+            { name: 'Right', yaw: 270, roll: 90 }     // Right: rotate output 90° (right)
         ];
         
         for (let i = 0; i < 4; i++) {
             const config = cameraConfigs[i];
             const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
             
-            camera.position.set(...config.position);
-            camera.up.set(...config.up);
+            // Calculate position using spherical coordinates with user's pitch
+            const yawRad = THREE.MathUtils.degToRad(config.yaw);
+            camera.position.x = this.distance * Math.sin(yawRad) * Math.cos(pitchRad);
+            camera.position.y = this.distance * Math.sin(pitchRad);
+            camera.position.z = this.distance * Math.cos(yawRad) * Math.cos(pitchRad);
+            
+            camera.up.set(0, 1, 0);
             camera.lookAt(0, 0, 0);
+            
+            // Apply roll rotation to the output image (rotate along view axis)
+            if (config.roll !== 0) {
+                const rollRad = THREE.MathUtils.degToRad(config.roll);
+                camera.rotateZ(rollRad);
+            }
             
             this.cameras.push(camera);
         }
@@ -34,8 +57,9 @@ export class CameraManager {
     
     updateDistance(distance) {
         this.distance = distance;
+        this.userCameraState.distance = distance;
         this.setupCameras();
-        this.setupSingleCamera();
+        this.updateSingleCameraFromState();
     }
     
     updateAspect(index, aspect) {
@@ -49,10 +73,45 @@ export class CameraManager {
         // Single forward-facing camera at horizontal level
         // Use larger distance for better view
         const singleViewDistance = this.distance * 1.7;
+        this.userCameraState.distance = singleViewDistance;
+        
         this.singleCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-        this.singleCamera.position.set(0, 0, singleViewDistance);
         this.singleCamera.up.set(0, 1, 0);
+        
+        // Initialize from state
+        this.updateSingleCameraFromState();
+    }
+    
+    updateSingleCameraFromState() {
+        if (!this.singleCamera) return;
+        
+        const { pitch, yaw, distance } = this.userCameraState;
+        
+        // Convert spherical coordinates (pitch, yaw) to Cartesian
+        const pitchRad = THREE.MathUtils.degToRad(pitch);
+        const yawRad = THREE.MathUtils.degToRad(yaw);
+        
+        // Calculate camera position on sphere
+        this.singleCamera.position.x = distance * Math.sin(yawRad) * Math.cos(pitchRad);
+        this.singleCamera.position.y = distance * Math.sin(pitchRad);
+        this.singleCamera.position.z = distance * Math.cos(yawRad) * Math.cos(pitchRad);
+        
         this.singleCamera.lookAt(0, 0, 0);
+    }
+    
+    rotateSingleCamera(deltaYaw, deltaPitch) {
+        // Apply rotation delta
+        this.userCameraState.yaw += deltaYaw;
+        this.userCameraState.pitch -= deltaPitch;  // Inverted Y-axis
+        
+        // Clamp pitch to range [-30°, 60°]
+        this.userCameraState.pitch = Math.max(-30, Math.min(60, this.userCameraState.pitch));
+        
+        // Update camera position
+        this.updateSingleCameraFromState();
+        
+        // Also update quadrant cameras to match pitch angle
+        this.setupCameras();
     }
     
     getCameras() {
