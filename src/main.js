@@ -20,6 +20,9 @@ class PepperGhostApp {
         this.cameraManager = new CameraManager();
         this.renderManager = new RenderManager(this.canvas);
         
+        // View mode state
+        this.viewMode = 'quadrant'; // 'quadrant' or 'single'
+        
         // Setup resize handling
         this.setupResizeHandling();
         
@@ -28,6 +31,7 @@ class PepperGhostApp {
         
         // Setup controls
         this.setupControls();
+        this.setupViewToggle();
         
         // Start animation loop
         this.animate();
@@ -213,6 +217,25 @@ class PepperGhostApp {
         });
     }
     
+    setupViewToggle() {
+        const viewToggleBtn = document.getElementById('viewToggleBtn');
+        viewToggleBtn.addEventListener('click', () => {
+            this.toggleViewMode();
+        });
+    }
+    
+    toggleViewMode() {
+        if (this.viewMode === 'quadrant') {
+            this.viewMode = 'single';
+            this.renderManager.setViewMode('single');
+            document.getElementById('viewToggleBtn').textContent = 'Four Quadrants';
+        } else {
+            this.viewMode = 'quadrant';
+            this.renderManager.setViewMode('quadrant');
+            document.getElementById('viewToggleBtn').textContent = 'Single View';
+        }
+    }
+    
     animate() {
         requestAnimationFrame(() => this.animate());
         
@@ -223,12 +246,19 @@ class PepperGhostApp {
             mesh.rotation.x += this.rotationSpeed * 0.4;
         }
         
-        // Render four quadrants
+        // Render based on view mode
         try {
-            this.renderManager.renderQuadrants(
-                this.sceneManager.getScene(),
-                this.cameraManager.getCameras()
-            );
+            if (this.viewMode === 'single') {
+                this.renderManager.renderSingle(
+                    this.sceneManager.getScene(),
+                    this.cameraManager.getSingleCamera()
+                );
+            } else {
+                this.renderManager.renderQuadrants(
+                    this.sceneManager.getScene(),
+                    this.cameraManager.getCameras()
+                );
+            }
         } catch (error) {
             console.error('❌ Render error:', error);
         }

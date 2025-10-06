@@ -3,8 +3,10 @@ import * as THREE from 'three';
 export class CameraManager {
     constructor() {
         this.cameras = [];
+        this.singleCamera = null;
         this.distance = 3.5;
         this.setupCameras();
+        this.setupSingleCamera();
     }
     
     setupCameras() {
@@ -33,6 +35,7 @@ export class CameraManager {
     updateDistance(distance) {
         this.distance = distance;
         this.setupCameras();
+        this.setupSingleCamera();
     }
     
     updateAspect(index, aspect) {
@@ -42,8 +45,22 @@ export class CameraManager {
         }
     }
     
+    setupSingleCamera() {
+        // Single forward-facing camera at horizontal level
+        // Use larger distance for better view
+        const singleViewDistance = this.distance * 1.7;
+        this.singleCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.singleCamera.position.set(0, 0, singleViewDistance);
+        this.singleCamera.up.set(0, 1, 0);
+        this.singleCamera.lookAt(0, 0, 0);
+    }
+    
     getCameras() {
         return this.cameras;
+    }
+    
+    getSingleCamera() {
+        return this.singleCamera;
     }
     
     getCamera(index) {
@@ -63,5 +80,11 @@ export class CameraManager {
             camera.aspect = aspectRatio;
             camera.updateProjectionMatrix();
         });
+        
+        // Update single camera aspect
+        if (this.singleCamera) {
+            this.singleCamera.aspect = width / height;
+            this.singleCamera.updateProjectionMatrix();
+        }
     }
 }

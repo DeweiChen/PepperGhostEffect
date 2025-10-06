@@ -9,6 +9,7 @@ export class RenderManager {
         
         this.canvas = canvas;
         this.resizeCallbacks = [];
+        this.viewMode = 'quadrant'; // 'quadrant' or 'single'
         
         this.renderer = new THREE.WebGLRenderer({ 
             canvas, 
@@ -115,6 +116,38 @@ export class RenderManager {
             // Render scene
             this.renderer.render(scene, camera);
         }
+    }
+    
+    renderSingle(scene, camera) {
+        if (!scene || !camera) {
+            console.error('❌ Invalid scene or camera for rendering');
+            return;
+        }
+        
+        const canvas = this.renderer.domElement;
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        
+        // Full viewport rendering
+        this.renderer.setViewport(0, 0, w, h);
+        this.renderer.setScissor(0, 0, w, h);
+        
+        // Update camera aspect
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        
+        // Render
+        this.renderer.render(scene, camera);
+    }
+    
+    setViewMode(mode) {
+        if (mode === 'quadrant' || mode === 'single') {
+            this.viewMode = mode;
+        }
+    }
+    
+    getViewMode() {
+        return this.viewMode;
     }
     
     getRenderer() {
