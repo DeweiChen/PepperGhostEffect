@@ -126,6 +126,33 @@
             background: rgba(255, 255, 255, 0.4);
         }
         
+        /* Lighting toggle button - special styling */
+        #lightingToggleBtn {
+            width: 100%;
+            font-weight: bold;
+            padding: 10px 16px;
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        #lightingToggleBtn.ibl-mode {
+            background: rgba(0, 255, 136, 0.25);
+            border-color: rgba(0, 255, 136, 0.5);
+        }
+        
+        #lightingToggleBtn.ibl-mode:hover {
+            background: rgba(0, 255, 136, 0.35);
+        }
+        
+        #lightingToggleBtn.legacy-mode {
+            background: rgba(255, 136, 0, 0.25);
+            border-color: rgba(255, 136, 0, 0.5);
+        }
+        
+        #lightingToggleBtn.legacy-mode:hover {
+            background: rgba(255, 136, 0, 0.35);
+        }
+        
         label {
             display: block;
             margin-bottom: 5px;
@@ -227,6 +254,12 @@
         <canvas id="canvas"></canvas>
         
         <div class="controls">
+            <div class="control-group">
+                <button id="lightingToggleBtn" class="ibl-mode">
+                    💡 IBL Lighting (ModelViewer)
+                </button>
+            </div>
+            
             <div class="control-group">
                 <label>Shape:</label>
                 <select id="shapeSelect">

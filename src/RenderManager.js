@@ -25,6 +25,11 @@ export class RenderManager {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
+        // ModelViewer-style rendering: Physical tone mapping + sRGB encoding
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        
         this.setupEventListeners();
     }
     

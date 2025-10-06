@@ -15,10 +15,10 @@ class PepperGhostApp {
         this.rotationSpeed = 0.005;
         this.isAnimating = true;
         
-        // Initialize managers
-        this.sceneManager = new SceneManager();
-        this.cameraManager = new CameraManager();
+        // Initialize managers - order matters: RenderManager first for IBL
         this.renderManager = new RenderManager(this.canvas);
+        this.sceneManager = new SceneManager(this.renderManager.getRenderer());
+        this.cameraManager = new CameraManager();
         
         // View mode state
         this.viewMode = 'quadrant'; // 'quadrant' or 'single'
@@ -38,6 +38,19 @@ class PepperGhostApp {
     }
     
     setupControls() {
+        // Lighting mode toggle
+        const lightingToggleBtn = document.getElementById('lightingToggleBtn');
+        lightingToggleBtn.addEventListener('click', () => {
+            const newMode = this.sceneManager.toggleLightingMode();
+            if (newMode === 'ibl') {
+                lightingToggleBtn.textContent = '💡 IBL Lighting (ModelViewer)';
+                lightingToggleBtn.className = 'ibl-mode';
+            } else {
+                lightingToggleBtn.textContent = '💡 Legacy Lighting (Simple)';
+                lightingToggleBtn.className = 'legacy-mode';
+            }
+        });
+        
         // Shape selection
         const shapeSelect = document.getElementById('shapeSelect');
         shapeSelect.addEventListener('change', (e) => {

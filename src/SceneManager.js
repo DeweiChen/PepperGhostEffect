@@ -1,30 +1,133 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 export class SceneManager {
-    constructor() {
+    constructor(renderer = null) {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x000000);  // Pure black for projection
         
         this.currentObject = null;
         this.gltfLoader = new GLTFLoader();
+        this.rgbeLoader = new RGBELoader();
+        this.renderer = renderer;
+        this.environmentReady = false;
+        
+        // Lighting system state
+        this.lightingMode = 'ibl'; // 'ibl' or 'legacy'
+        this.envMap = null;
+        this.legacyLights = [];
+        
+        // Setup IBL lighting asynchronously (default)
         this.setupLighting();
     }
     
-    setupLighting() {
-        // Ambient light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        this.scene.add(ambientLight);
+    async setupLighting() {
+        console.log('🌍 Setting up IBL (Image-Based Lighting)...');
         
-        // Directional light
+        // Use a neutral studio HDRI for ModelViewer-style lighting
+        // Using Three.js example HDRI from public CDN
+        const hdriUrl = 'https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr';
+        
+        try {
+            const texture = await this.loadHDRI(hdriUrl);
+            
+            if (this.renderer) {
+                const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+                pmremGenerator.compileEquirectangularShader();
+                
+                this.envMap = pmremGenerator.fromEquirectangular(texture).texture;
+                
+                // Set as scene environment for PBR reflections
+                this.scene.environment = this.envMap;
+                
+                // Optional: use as background (commented out for black background)
+                // this.scene.background = this.envMap;
+                
+                texture.dispose();
+                pmremGenerator.dispose();
+                
+                this.environmentReady = true;
+                this.lightingMode = 'ibl';
+                console.log('✅ IBL environment ready');
+            } else {
+                console.warn('⚠️  No renderer provided, using legacy lighting');
+                this.setupLegacyLighting();
+            }
+        } catch (error) {
+            console.error('❌ Failed to load HDRI, using legacy lighting:', error);
+            this.setupLegacyLighting();
+        }
+    }
+    
+    loadHDRI(url) {
+        return new Promise((resolve, reject) => {
+            this.rgbeLoader.load(
+                url,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    resolve(texture);
+                },
+                undefined,
+                reject
+            );
+        });
+    }
+    
+    setupLegacyLighting() {
+        // Legacy simple lighting system (old version)
+        console.log('🔦 Using legacy lighting');
+        
+        // Clear any existing legacy lights
+        this.clearLegacyLights();
+        
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 5, 5);
-        this.scene.add(directionalLight);
-        
-        // Fill light
         const fillLight = new THREE.DirectionalLight(0x4444ff, 0.3);
         fillLight.position.set(-5, -5, -5);
+        
+        this.scene.add(ambientLight);
+        this.scene.add(directionalLight);
         this.scene.add(fillLight);
+        
+        this.legacyLights = [ambientLight, directionalLight, fillLight];
+        this.lightingMode = 'legacy';
+        this.environmentReady = true;
+    }
+    
+    clearLegacyLights() {
+        // Remove all legacy lights from scene
+        this.legacyLights.forEach(light => {
+            this.scene.remove(light);
+            if (light.dispose) light.dispose();
+        });
+        this.legacyLights = [];
+    }
+    
+    toggleLightingMode() {
+        if (this.lightingMode === 'ibl') {
+            // Switch to legacy
+            console.log('🔄 Switching to Legacy Lighting');
+            this.scene.environment = null;
+            this.setupLegacyLighting();
+            return 'legacy';
+        } else {
+            // Switch to IBL
+            console.log('🔄 Switching to IBL Lighting');
+            this.clearLegacyLights();
+            if (this.envMap) {
+                this.scene.environment = this.envMap;
+                this.lightingMode = 'ibl';
+            } else {
+                console.warn('⚠️  IBL not loaded, staying in legacy mode');
+            }
+            return this.lightingMode;
+        }
+    }
+    
+    getLightingMode() {
+        return this.lightingMode;
     }
     
     _disposeObject(object) {
@@ -92,9 +195,10 @@ export class SceneManager {
         // Create new object
         const geometry = this.createGeometry(geometryType);
         const material = new THREE.MeshStandardMaterial({
-            metalness: 0.1,
+            metalness: 0.3,
             roughness: 0.4,
-            color: 0x00ff88  // Bright green for testing
+            color: 0x00ff88,  // Bright green for testing
+            envMapIntensity: 1.0  // Full environment reflection
         });
         
         const mesh = new THREE.Mesh(geometry, material);
