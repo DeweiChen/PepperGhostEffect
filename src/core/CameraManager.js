@@ -5,10 +5,11 @@ export class CameraManager {
         this.cameras = [];
         this.singleCamera = null;
         this.distance = 3.5;
+        this.lookAtTarget = new THREE.Vector3(0, 0, 0); // Camera target point
         
         // User camera state for Single View (persistent across view changes)
         this.userCameraState = {
-            pitch: 0,      // Vertical angle in degrees (-30° to 60°)
+            pitch: 20,     // Vertical angle in degrees (-30° to 60°) - 20° downward angle
             yaw: 0,        // Horizontal angle in degrees (unlimited)
             distance: 3.5  // Distance from origin
         };
@@ -38,12 +39,12 @@ export class CameraManager {
             
             // Calculate position using spherical coordinates with user's pitch
             const yawRad = THREE.MathUtils.degToRad(config.yaw);
-            camera.position.x = this.distance * Math.sin(yawRad) * Math.cos(pitchRad);
-            camera.position.y = this.distance * Math.sin(pitchRad);
-            camera.position.z = this.distance * Math.cos(yawRad) * Math.cos(pitchRad);
+            camera.position.x = this.lookAtTarget.x + this.distance * Math.sin(yawRad) * Math.cos(pitchRad);
+            camera.position.y = this.lookAtTarget.y + this.distance * Math.sin(pitchRad);
+            camera.position.z = this.lookAtTarget.z + this.distance * Math.cos(yawRad) * Math.cos(pitchRad);
             
             camera.up.set(0, 1, 0);
-            camera.lookAt(0, 0, 0);
+            camera.lookAt(this.lookAtTarget);
             
             // Apply roll rotation to the output image (rotate along view axis)
             if (config.roll !== 0) {
@@ -92,11 +93,11 @@ export class CameraManager {
         const yawRad = THREE.MathUtils.degToRad(yaw);
         
         // Calculate camera position on sphere
-        this.singleCamera.position.x = distance * Math.sin(yawRad) * Math.cos(pitchRad);
-        this.singleCamera.position.y = distance * Math.sin(pitchRad);
-        this.singleCamera.position.z = distance * Math.cos(yawRad) * Math.cos(pitchRad);
+        this.singleCamera.position.x = this.lookAtTarget.x + distance * Math.sin(yawRad) * Math.cos(pitchRad);
+        this.singleCamera.position.y = this.lookAtTarget.y + distance * Math.sin(pitchRad);
+        this.singleCamera.position.z = this.lookAtTarget.z + distance * Math.cos(yawRad) * Math.cos(pitchRad);
         
-        this.singleCamera.lookAt(0, 0, 0);
+        this.singleCamera.lookAt(this.lookAtTarget);
     }
     
     rotateSingleCamera(deltaYaw, deltaPitch) {
@@ -145,5 +146,12 @@ export class CameraManager {
             this.singleCamera.aspect = width / height;
             this.singleCamera.updateProjectionMatrix();
         }
+    }
+    
+    setLookAtTarget(target) {
+        this.lookAtTarget.copy(target);
+        this.setupCameras();
+        this.updateSingleCameraFromState();
+        console.log('🎯 Camera target updated to:', this.lookAtTarget);
     }
 }
