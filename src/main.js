@@ -1,6 +1,7 @@
 import { SceneManager } from './SceneManager.js';
 import { CameraManager } from './CameraManager.js';
 import { RenderManager } from './RenderManager.js';
+import { TapDetector } from './TapDetector.js';
 
 class PepperGhostApp {
     constructor() {
@@ -23,6 +24,18 @@ class PepperGhostApp {
         // View mode state
         this.viewMode = 'quadrant'; // 'quadrant' or 'single'
         
+        // Initialize tap detector
+        this.tapDetector = new TapDetector({
+            threshold: 1,       // Delta threshold (lowered for better sensitivity)
+            tapWindow: 1500,     // Max time between taps (ms)
+            cooldown: 200,      // Min time between taps (ms)
+            requiredTaps: 2,    // Double tap
+            debugMode: false     // Enable detailed logging
+        });
+        
+        // Setup tap detection
+        this.setupTapDetection();
+        
         // Setup resize handling
         this.setupResizeHandling();
         
@@ -39,6 +52,21 @@ class PepperGhostApp {
     }
     
     setupControls() {
+        // Tap detection enable button (required for iOS permission)
+        const enableTapBtn = document.getElementById('enableTapDetectionBtn');
+        enableTapBtn.addEventListener('click', async () => {
+            const granted = await this.tapDetector.requestPermission();
+            
+            if (granted) {
+                this.tapDetector.start();
+                enableTapBtn.textContent = '✅ Tap Detection Active';
+                enableTapBtn.classList.add('active');
+                enableTapBtn.disabled = true;
+            } else {
+                alert('❌ Permission denied. Tap detection requires motion sensor access.');
+            }
+        });
+        
         // Lighting mode toggle
         const lightingToggleBtn = document.getElementById('lightingToggleBtn');
         lightingToggleBtn.addEventListener('click', () => {
@@ -140,6 +168,30 @@ class PepperGhostApp {
                     break;
             }
         });
+    }
+    
+    setupTapDetection() {
+        // Listen for double tap events
+        this.tapDetector.on('double-tap', () => {
+            console.log('🎯 Double tap detected! Switching to next shape...');
+            this.cycleToNextShape();
+        });
+        
+        // Log detector status on startup
+        console.log('🎯 TapDetector initialized:', this.tapDetector.getStatus());
+    }
+    
+    cycleToNextShape() {
+        const shapes = ['torusKnot', 'sphere', 'cube', 'dodecahedron'];
+        const shapeSelect = document.getElementById('shapeSelect');
+        const currentIndex = shapes.indexOf(shapeSelect.value);
+        const nextIndex = (currentIndex + 1) % shapes.length;
+        const nextShape = shapes[nextIndex];
+        
+        console.log(`📦 Shape changed: ${shapeSelect.value} → ${nextShape}`);
+        
+        shapeSelect.value = nextShape;
+        this.sceneManager.updateMesh(nextShape);
     }
     
     resetToDefaults() {
