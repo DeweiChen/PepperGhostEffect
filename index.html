@@ -138,6 +138,37 @@
             margin-right: 10px;
         }
         
+        input[type="text"] {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            border-radius: 4px;
+            padding: 5px 10px;
+        }
+        
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        input[type="file"] {
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        input[type="file"]::file-selector-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        input[type="file"]::file-selector-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
         select, button {
             padding: 5px 10px;
             background: rgba(255, 255, 255, 0.1);
@@ -204,6 +235,11 @@
                     <option value="cube">Cube</option>
                     <option value="dodecahedron">Dodecahedron</option>
                 </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Load GLB Model:</label>
+                <input type="file" id="modelFile" accept=".glb,.gltf" style="display: block; font-size: 11px;">
             </div>
             
             <div class="control-group">

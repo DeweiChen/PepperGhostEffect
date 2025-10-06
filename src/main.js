@@ -40,6 +40,28 @@ class PepperGhostApp {
             this.sceneManager.updateMesh(e.target.value);
         });
         
+        // GLB file loading
+        const modelFileInput = document.getElementById('modelFile');
+        
+        modelFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (!file.name.endsWith('.glb') && !file.name.endsWith('.gltf')) {
+                alert('Please select a .glb or .gltf file');
+                return;
+            }
+            
+            try {
+                await this.sceneManager.loadModelFromFile(file);
+                
+                // Reset shape selector
+                shapeSelect.value = '';
+            } catch (error) {
+                alert(`Failed to load model: ${error.message}`);
+            }
+        });
+        
         // Rotation speed control
         const rotationSpeedSlider = document.getElementById('rotationSpeed');
         const speedValue = document.getElementById('speedValue');
