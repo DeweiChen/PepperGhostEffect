@@ -418,11 +418,11 @@ export class CakeApp {
         
         if (rotationSpeedSlider) rotationSpeedSlider.value = '0.003';
         if (speedValue) speedValue.textContent = '0.003';
-        if (cameraDistanceSlider) cameraDistanceSlider.value = '3';
-        if (distanceValue) distanceValue.textContent = '3';
+        if (cameraDistanceSlider) cameraDistanceSlider.value = '4.5';
+        if (distanceValue) distanceValue.textContent = '4.5';
         
         this.rotationSpeed = 0.003;
-        this.cameraManager.updateDistance(3.5);
+        this.cameraManager.updateDistance(4.5);
         
         // Reset cake rotation
         const mesh = this.sceneManager.getMesh();
@@ -490,7 +490,7 @@ export class CakeApp {
     }
     
     resetCamera() {
-        this.cameraManager.updateDistance(3.5);
+        this.cameraManager.updateDistance(4.5);
     }
     
     setupResizeHandling() {

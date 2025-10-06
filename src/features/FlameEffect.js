@@ -24,6 +24,7 @@ export class FlameEffect {
         // State
         this.isBurning = true;
         this.time = 0;
+        this.windForce = { x: 0, y: 0, z: 0 }; // Wind force for blow-out effect (from above)
         
         // Create particle system
         this.createParticleSystem();
@@ -131,8 +132,6 @@ export class FlameEffect {
      * Update particle system (called every frame)
      */
     update(deltaTime = 0.016) {
-        if (!this.isBurning) return;
-        
         this.time += deltaTime;
         
         const positions = this.geometry.attributes.position.array;
@@ -145,8 +144,8 @@ export class FlameEffect {
             // Lower value = longer lifetime = taller flame
             this.lifetimes[i] += deltaTime * 0.5;  // Adjustable: 0.3-0.7
             
-            // Respawn particle after death
-            if (this.lifetimes[i] > 1.0) {
+            // Respawn particle after death (only when burning)
+            if (this.lifetimes[i] > 1.0 && this.isBurning) {
                 this.resetParticle(i);
             }
             
@@ -155,11 +154,14 @@ export class FlameEffect {
             positions[i3 + 1] += this.velocities[i3 + 1];
             positions[i3 + 2] += this.velocities[i3 + 2];
             
-            // Gentle sine wave motion for natural flame sway
-            const wobble = Math.sin(this.time * 3.5 + i * 0.2) * 0.002;
-            const wobble2 = Math.cos(this.time * 4 + i * 0.15) * 0.0015;
-            positions[i3] += wobble;
-            positions[i3 + 2] += wobble2;
+            // Gentle sine wave motion for natural flame sway (stronger when extinguishing)
+            const wobbleStrength = this.isBurning ? 0.002 : 0.02;
+            const wobbleStrength2 = this.isBurning ? 0.0015 : 0.015;
+            const wobble = Math.sin(this.time * 3.5 + i * 0.2) * wobbleStrength;
+            const wobble2 = Math.cos(this.time * 4 + i * 0.15) * wobbleStrength2;
+            positions[i3] += wobble + this.windForce.x;
+            positions[i3 + 1] += this.windForce.y; // Apply downward wind force
+            positions[i3 + 2] += wobble2 + this.windForce.z;
             
             // Height ratio for color gradient
             const heightRatio = Math.min(1.0, positions[i3 + 1] / this.flameHeight);
@@ -188,6 +190,28 @@ export class FlameEffect {
         
         console.log('💨 Extinguishing flame...');
         this.isBurning = false;
+        
+        // Simulate blowing from above - downward wind with slight horizontal scatter
+        const horizontalAngle = Math.random() * Math.PI * 2;
+        const horizontalStrength = 0.02 + Math.random() * 0.015; // Random horizontal component
+        
+        gsap.to(this.windForce, {
+            x: Math.cos(horizontalAngle) * horizontalStrength,
+            y: -0.04, // Strong downward force (like blowing from above)
+            z: Math.sin(horizontalAngle) * horizontalStrength,
+            duration: duration * 0.8,
+            ease: 'power1.out'
+        });
+        
+        // Remove upward buoyancy (particles lose lift)
+        for (let i = 0; i < this.particleCount; i++) {
+            const i3 = i * 3;
+            gsap.to(this.velocities, {
+                [i3 + 1]: 0,
+                duration: duration * 0.6,
+                ease: 'power2.out'
+            });
+        }
         
         // Use GSAP for fade out animation
         gsap.to(this.material, {
@@ -218,6 +242,11 @@ export class FlameEffect {
         
         console.log('🔥 Relighting flame...');
         this.isBurning = true;
+        
+        // Reset wind force
+        this.windForce.x = 0;
+        this.windForce.y = 0;
+        this.windForce.z = 0;
         
         // Reset all particles
         for (let i = 0; i < this.particleCount; i++) {
