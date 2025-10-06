@@ -239,11 +239,10 @@ class PepperGhostApp {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        // Object animation
+        // Object animation - horizontal rotation only
         const mesh = this.sceneManager.getMesh();
         if (mesh && this.isAnimating) {
             mesh.rotation.y += this.rotationSpeed;
-            mesh.rotation.x += this.rotationSpeed * 0.4;
         }
         
         // Render based on view mode

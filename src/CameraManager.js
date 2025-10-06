@@ -12,10 +12,10 @@ export class CameraManager {
     setupCameras() {
         this.cameras = [];
         
-        // Four views: top, bottom, left, right
+        // Four views: back (top viewport), front (bottom viewport), left, right
         const cameraConfigs = [
-            { name: 'Top',    position: [0, this.distance, 0],           up: [0, 0, -1] },  // Top view
-            { name: 'Bottom', position: [0, -this.distance, 0],          up: [0, 0, 1] },   // Bottom view
+            { name: 'Back',   position: [0, 0, this.distance],          up: [0, 1, 0] },   // Back view (top viewport)
+            { name: 'Front',  position: [0, 0, -this.distance],         up: [0, 1, 0] },   // Front view (bottom viewport)
             { name: 'Left',   position: [-this.distance, 0, 0],         up: [0, 1, 0] },   // Left view
             { name: 'Right',  position: [this.distance, 0, 0],          up: [0, 1, 0] }    // Right view
         ];
