@@ -27,7 +27,7 @@ export class RenderManager {
         
         // ModelViewer-style rendering: Physical tone mapping + sRGB encoding
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.0;
+        this.renderer.toneMappingExposure = 1.8;  // Increased from 1.0 for brighter rendering
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         
         this.setupEventListeners();
@@ -77,8 +77,8 @@ export class RenderManager {
         const centerY = h / 2;
         let viewSize;
         
-        // Use smaller dimension to ensure viewports fit on screen
-        viewSize = Math.min(w, h) / 4;  // 25% of smaller dimension for better centering
+        // Cross layout spans 3 units (top-center-bottom or left-center-right)
+        viewSize = Math.min(w, h) / 3.3;  // 30.3% per viewport - perfect fit for cross layout
         
         const viewports = [
             // Perfectly centered cross layout
@@ -157,5 +157,21 @@ export class RenderManager {
     
     getRenderer() {
         return this.renderer;
+    }
+    
+    /**
+     * Set tone mapping exposure (brightness control)
+     * @param {number} value - Exposure value (typical range: 0.5 - 3.0, default: 1.8)
+     */
+    setExposure(value) {
+        this.renderer.toneMappingExposure = value;
+        console.log(`💡 Tone mapping exposure set to: ${value}`);
+    }
+    
+    /**
+     * Get current exposure value
+     */
+    getExposure() {
+        return this.renderer.toneMappingExposure;
     }
 }

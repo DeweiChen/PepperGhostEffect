@@ -393,4 +393,21 @@ export class PepperGhostApp {
             console.error('❌ Render error:', error);
         }
     }
+    
+    /**
+     * Adjust brightness (tone mapping exposure)
+     * Usage in console: window.app.setBrightness(2.0)
+     * @param {number} value - Exposure value (0.5 = darker, 1.8 = default, 3.0 = very bright)
+     */
+    setBrightness(value) {
+        this.renderManager.setExposure(value);
+        console.log(`✨ Brightness adjusted to: ${value}`);
+    }
+    
+    /**
+     * Get current brightness value
+     */
+    getBrightness() {
+        return this.renderManager.getExposure();
+    }
 }

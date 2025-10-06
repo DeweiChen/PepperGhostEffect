@@ -256,8 +256,8 @@
             
             <div class="control-group">
                 <label>Rotation Speed:</label>
-                <input type="range" id="rotationSpeed" min="0" max="0.02" step="0.001" value="0.003">
-                <span id="speedValue">0.003</span>
+                <input type="range" id="rotationSpeed" min="0" max="0.02" step="0.001" value="0.002">
+                <span id="speedValue">0.002</span>
             </div>
             
             <div class="control-group">
@@ -281,9 +281,10 @@
             console.log('🎂 Birthday Cake - Pepper Ghost Effect');
             console.log('🔥 Candle flame effect with particle system');
             console.log('⌨️  Controls: Space = Pause, R = Reset, E = Toggle Flame, F = Fullscreen');
+            console.log('💡 Brightness control: window.app.setBrightness(value) - range: 0.5 to 3.0');
             
             try {
-                new CakeApp();
+                window.app = new CakeApp();
             } catch (error) {
                 console.error('❌ Failed to initialize app:', error);
             }

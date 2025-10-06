@@ -81,10 +81,11 @@ export class SceneManager {
         // Clear any existing legacy lights
         this.clearLegacyLights();
         
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        // Increased intensities for brighter rendering (doubled from original)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);  // Was 0.6
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);  // Was 0.8
         directionalLight.position.set(5, 5, 5);
-        const fillLight = new THREE.DirectionalLight(0x4444ff, 0.3);
+        const fillLight = new THREE.DirectionalLight(0x4444ff, 0.5);  // Was 0.3
         fillLight.position.set(-5, -5, -5);
         
         this.scene.add(ambientLight);

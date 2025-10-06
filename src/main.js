@@ -4,9 +4,10 @@ import { PepperGhostApp } from './apps/PepperGhostApp.js';
 function initApp() {
     console.log('🚀 Pepper Ghost Effect - Four Quadrant 3D Viewer');
     console.log('⌨️  Controls: Space = Pause/Resume, R = Reset');
+    console.log('💡 Brightness control: window.app.setBrightness(value) - range: 0.5 to 3.0');
     
     try {
-        new PepperGhostApp();
+        window.app = new PepperGhostApp();
     } catch (error) {
         console.error('❌ Failed to initialize app:', error);
     }
