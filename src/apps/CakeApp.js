@@ -74,7 +74,7 @@ export class CakeApp {
         
         try {
             // Use relative path that works with Vite base path
-            const modelPath = './models/cake.glb';
+            const modelPath = 'https://cdn.jsdelivr.net/gh/DeweiChen/PepperGhostEffect/public/models/cake.glb';
             await this.sceneManager.loadModelFromURL(modelPath);
             
             console.log('✅ Cake model loaded successfully');
