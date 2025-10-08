@@ -19,7 +19,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        cake: resolve(__dirname, 'cake.html')
+        cake: resolve(__dirname, 'cake.html'),
+        fu: resolve(__dirname, 'fu.html')
       }
     }
   }

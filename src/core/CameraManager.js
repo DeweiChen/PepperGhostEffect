@@ -1,17 +1,17 @@
 import * as THREE from 'three';
 
 export class CameraManager {
-    constructor() {
+    constructor(initialPitch = 20, initialDistance = 3.5) {
         this.cameras = [];
         this.singleCamera = null;
-        this.distance = 3.5;
+        this.distance = initialDistance;
         this.lookAtTarget = new THREE.Vector3(0, 0, 0); // Camera target point
         
         // User camera state for Single View (persistent across view changes)
         this.userCameraState = {
-            pitch: 20,     // Vertical angle in degrees (-30° to 60°) - 20° downward angle
-            yaw: 0,        // Horizontal angle in degrees (unlimited)
-            distance: 3.5  // Distance from origin
+            pitch: initialPitch,  // Vertical angle in degrees (-30° to 60°) - customizable per app
+            yaw: 0,               // Horizontal angle in degrees (unlimited)
+            distance: initialDistance         // Distance from origin
         };
         
         this.setupCameras();
