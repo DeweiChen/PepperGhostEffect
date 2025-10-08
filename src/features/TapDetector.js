@@ -1,11 +1,13 @@
 /**
- * TapDetector - Detects double tap gestures via device motion sensors
+ * TapDetector - Detects double tap gestures via device motion sensors and touch events
  * 
  * Monitors accelerometer data to detect physical taps on the surface
- * where the device is placed (e.g., tablet on a table).
+ * where the device is placed (e.g., tablet on a table) and also detects
+ * direct touch events on the screen.
  * 
  * Usage:
- *   const detector = new TapDetector();
+ *   const canvas = renderer.domElement;
+ *   const detector = new TapDetector({ targetElement: canvas });
  *   await detector.requestPermission(); // Required for iOS
  *   detector.start();
  *   detector.on('double-tap', () => console.log('Double tap detected!'));
@@ -21,6 +23,9 @@ export class TapDetector {
             debugMode: options.debugMode !== false     // Enable debug logging by default
         };
         
+        // Target elements for event binding
+        this.targetElement = options.targetElement || document;  // Touch events target
+        
         // State
         this.tapTimestamps = [];                       // Recent tap timestamps
         this.lastTapTime = 0;                          // Last detected tap time
@@ -34,6 +39,7 @@ export class TapDetector {
         
         // Bind methods
         this.handleMotion = this.handleMotion.bind(this);
+        this.handleTouch = this.handleTouch.bind(this);
     }
     
     /**
@@ -61,7 +67,7 @@ export class TapDetector {
     }
     
     /**
-     * Start listening for device motion events
+     * Start listening for device motion and touch events
      */
     start() {
         if (this.isActive) {
@@ -75,6 +81,7 @@ export class TapDetector {
         }
         
         window.addEventListener('devicemotion', this.handleMotion);
+        this.targetElement.addEventListener('touchstart', this.handleTouch);
         this.isActive = true;
         console.log('🎯 TapDetector started');
         console.log(`   Threshold: ${this.config.threshold} (delta from baseline)`);
@@ -84,10 +91,11 @@ export class TapDetector {
     }
     
     /**
-     * Stop listening for device motion events
+     * Stop listening for device motion and touch events
      */
     stop() {
         window.removeEventListener('devicemotion', this.handleMotion);
+        this.targetElement.removeEventListener('touchstart', this.handleTouch);
         this.isActive = false;
         this.tapTimestamps = [];
         this.isCalibrated = false;
@@ -103,6 +111,41 @@ export class TapDetector {
         this.calibrationSamples = [];
         this.baselineMagnitude = null;
         console.log('🔄 Recalibrating... (keep device still)');
+    }
+    
+    /**
+     * Record a tap from any input source
+     * @param {string} source - Source of the tap ('motion' or 'touch')
+     * @returns {boolean} - Whether the tap was recorded
+     */
+    recordTap(source) {
+        const now = Date.now();
+        
+        // Check cooldown period
+        if (now - this.lastTapTime < this.config.cooldown) {
+            if (this.config.debugMode) {
+                console.log(`⏳ Cooldown active: ${now - this.lastTapTime}ms since last tap`);
+            }
+            return false;
+        }
+        
+        // Clean up expired timestamps
+        this.tapTimestamps = this.tapTimestamps.filter(
+            time => now - time < this.config.tapWindow
+        );
+        
+        // Record new tap
+        this.lastTapTime = now;
+        this.tapTimestamps.push(now);
+        
+        console.log(`👆 TAP from ${source}! (${this.tapTimestamps.length}/${this.config.requiredTaps})`);
+        
+        // Check if we have enough taps for double tap
+        if (this.tapTimestamps.length >= this.config.requiredTaps) {
+            this.handleDoubleTap();
+        }
+        
+        return true;
     }
     
     /**
@@ -150,33 +193,22 @@ export class TapDetector {
             console.log(`📊 Motion: magnitude=${magnitude.toFixed(2)}, baseline=${this.baselineMagnitude.toFixed(2)}, delta=${delta.toFixed(2)}`);
         }
         
-        const now = Date.now();
-        
-        // Clean up expired timestamps first (always, regardless of detection)
-        this.tapTimestamps = this.tapTimestamps.filter(
-            time => now - time < this.config.tapWindow
-        );
-        
         // Check if delta exceeds threshold
         if (delta > this.config.threshold) {
-            // Enforce cooldown period to avoid duplicate detections
-            if (now - this.lastTapTime < this.config.cooldown) {
-                if (this.config.debugMode) {
-                    console.log(`⏳ Cooldown active: ${now - this.lastTapTime}ms since last tap`);
-                }
-                return;
-            }
-            
-            this.lastTapTime = now;
-            this.tapTimestamps.push(now);
-            
-            console.log(`👆 TAP DETECTED! Delta: ${delta.toFixed(2)} m/s² (${this.tapTimestamps.length}/${this.config.requiredTaps})`);
-            
-            // Check if we have enough taps
-            if (this.tapTimestamps.length >= this.config.requiredTaps) {
-                this.handleDoubleTap();
-            }
+            this.recordTap('motion');
         }
+    }
+    
+    /**
+     * Handle touch start event
+     * @param {TouchEvent} event
+     */
+    handleTouch(event) {
+        // Prevent default to avoid conflicts with other touch handlers
+        event.preventDefault();
+        
+        // Record tap from touch source
+        this.recordTap('touch');
     }
     
     /**

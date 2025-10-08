@@ -24,8 +24,9 @@ export class PepperGhostApp {
         // View mode state
         this.viewMode = 'quadrant'; // 'quadrant' or 'single'
         
-        // Initialize tap detector
+        // Initialize tap detector with renderer canvas as target
         this.tapDetector = new TapDetector({
+            targetElement: this.renderManager.getRenderer().domElement,
             threshold: 1,       // Delta threshold (lowered for better sensitivity)
             tapWindow: 1500,     // Max time between taps (ms)
             cooldown: 200,      // Min time between taps (ms)

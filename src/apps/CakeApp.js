@@ -43,8 +43,9 @@ export class CakeApp {
         // Flame effect (will be created after model loads)
         this.flameEffect = null;
         
-        // Initialize tap detector
+        // Initialize tap detector with renderer canvas as target
         this.tapDetector = new TapDetector({
+            targetElement: this.renderManager.getRenderer().domElement,
             threshold: 1,
             tapWindow: 1500,
             cooldown: 200,
