@@ -43,6 +43,10 @@ export class CakeApp {
         // Flame effect (will be created after model loads)
         this.flameEffect = null;
         
+        // Audio control - Birthday song
+        this.audio = new Audio('https://cdn.jsdelivr.net/gh/DeweiChen/PepperGhostEffect/public/assets/HBD.mp3');
+        this.audio.loop = false; // Play once only
+        
         // Initialize tap detector with renderer canvas as target
         this.tapDetector = new TapDetector({
             targetElement: this.renderManager.getRenderer().domElement,
@@ -249,6 +253,37 @@ export class CakeApp {
             this.sceneManager.getScene().add(particleSystem);
             console.log('🔥 Flame added to scene');
         }
+        
+        // Start audio playback after flame is created
+        this.tryAutoPlayAudio();
+    }
+    
+    /**
+     * Sync audio playback with flame state
+     * - If flame is burning: restart audio from beginning
+     * - If flame is extinguished: pause audio
+     */
+    syncAudioWithFlame() {
+        if (!this.flameEffect || !this.audio) return;
+        
+        if (this.flameEffect.isBurning) {
+            this.audio.currentTime = 0; // Restart from beginning
+            this.audio.play().catch(e => console.log('🔇 Audio playback blocked:', e.message));
+        } else {
+            this.audio.pause();
+        }
+    }
+    
+    /**
+     * Try to auto-play audio on page load
+     * Note: May be blocked by browser autoplay policy
+     */
+    tryAutoPlayAudio() {
+        if (!this.audio) return;
+        
+        this.audio.play()
+            .then(() => console.log('🎵 Audio started automatically'))
+            .catch(e => console.log('🔇 Autoplay blocked. User interaction required.'));
     }
     
     setupControls() {
@@ -263,6 +298,14 @@ export class CakeApp {
                     enableTapBtn.textContent = '✅ Tap Detection Active';
                     enableTapBtn.classList.add('active');
                     enableTapBtn.disabled = true;
+                    
+                    // Try to play audio on user interaction (bypass autoplay policy)
+                    if (this.audio && this.flameEffect && this.flameEffect.isBurning) {
+                        this.audio.currentTime = 0;
+                        this.audio.play()
+                            .then(() => console.log('🎵 Audio started after user interaction'))
+                            .catch(e => console.log('🔇 Audio playback failed:', e.message));
+                    }
                 } else {
                     alert('❌ Permission denied. Tap detection requires motion sensor access.');
                 }
@@ -308,6 +351,7 @@ export class CakeApp {
             extinguishBtn.addEventListener('click', () => {
                 if (this.flameEffect) {
                     this.flameEffect.toggle();
+                    this.syncAudioWithFlame();
                     
                     // Update button text
                     if (this.flameEffect.isBurning) {
@@ -315,6 +359,13 @@ export class CakeApp {
                     } else {
                         extinguishBtn.textContent = '🔥 Relight Flame';
                     }
+                }
+                
+                // Try to play audio on user interaction (if not already playing)
+                if (this.audio && this.audio.paused && this.flameEffect && this.flameEffect.isBurning) {
+                    this.audio.play()
+                        .then(() => console.log('🎵 Audio started after user interaction'))
+                        .catch(e => console.log('🔇 Audio playback failed:', e.message));
                 }
             });
         }
@@ -381,6 +432,7 @@ export class CakeApp {
                     // E key: toggle flame
                     if (this.flameEffect) {
                         this.flameEffect.toggle();
+                        this.syncAudioWithFlame();
                     }
                     break;
             }
@@ -394,6 +446,7 @@ export class CakeApp {
             
             if (this.flameEffect) {
                 this.flameEffect.toggle();
+                this.syncAudioWithFlame();
                 
                 // Update button text
                 const extinguishBtn = document.getElementById('extinguishBtn');
@@ -434,6 +487,7 @@ export class CakeApp {
         // Relight flame if extinguished
         if (this.flameEffect && !this.flameEffect.isBurning) {
             this.flameEffect.relight();
+            this.syncAudioWithFlame();
         }
     }
     
