@@ -242,6 +242,12 @@
             </div>
             
             <div class="control-group">
+                <label>Bloom Strength (Single View):</label>
+                <input type="range" id="bloomStrength" min="0" max="5" step="0.1" value="1.5">
+                <span id="bloomValue">1.5</span>
+            </div>
+            
+            <div class="control-group">
                 <button id="viewToggleBtn">Single View</button>
                 <button id="resetBtn">Reset</button>
                 <button id="fullscreenBtn">Toggle Fullscreen</button>
@@ -255,8 +261,10 @@
         function initApp() {
             console.log('🎉 Happy Birthday - Pepper Ghost Effect');
             console.log('✨ 3D Text with Bloom Glow Effect');
-            console.log('⌨️  Controls: Space = Pause, R = Reset, F = Fullscreen');
-            console.log('💡 Brightness control: window.app.setBrightness(value) - range: 0.5 to 3.0');
+            console.log('👁️  Single View: Bloom ON | Quadrant View: Direct Rendering');
+            console.log('⌨️  Controls: Space = Pause, R = Reset, E = Toggle Glow, F = Fullscreen');
+            console.log('💡 Brightness: window.app.setBrightness(value) - range: 0.5 to 3.0');
+            console.log('✨ Bloom: window.app.setBloomStrength(value) - range: 0 to 5.0');
             
             try {
                 window.app = new FuApp();

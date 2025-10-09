@@ -10,6 +10,7 @@ export class RenderManager {
         this.canvas = canvas;
         this.resizeCallbacks = [];
         this.viewMode = 'quadrant'; // 'quadrant' or 'single'
+        this.composer = null; // Optional: EffectComposer for single view post-processing
         
         this.renderer = new THREE.WebGLRenderer({ 
             canvas, 
@@ -141,8 +142,13 @@ export class RenderManager {
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         
-        // Render
-        this.renderer.render(scene, camera);
+        // Use composer if available (for post-processing effects like bloom)
+        if (this.composer) {
+            this.composer.render();
+        } else {
+            // Fallback to direct rendering
+            this.renderer.render(scene, camera);
+        }
     }
     
     setViewMode(mode) {
@@ -173,5 +179,30 @@ export class RenderManager {
      */
     getExposure() {
         return this.renderer.toneMappingExposure;
+    }
+    
+    /**
+     * Set EffectComposer for single view post-processing
+     * Quadrant view will continue using direct rendering
+     * @param {EffectComposer} composer - Three.js EffectComposer instance
+     */
+    setComposer(composer) {
+        this.composer = composer;
+        console.log('✅ EffectComposer set for single view rendering');
+    }
+    
+    /**
+     * Remove composer and revert to direct rendering
+     */
+    clearComposer() {
+        this.composer = null;
+        console.log('🔄 Reverted to direct rendering');
+    }
+    
+    /**
+     * Get current composer instance
+     */
+    getComposer() {
+        return this.composer;
     }
 }

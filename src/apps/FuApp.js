@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { SceneManager } from '../core/SceneManager.js';
 import { CameraManager } from '../core/CameraManager.js';
 import { RenderManager } from '../core/RenderManager.js';
@@ -10,8 +13,9 @@ import { TapDetector } from '../features/TapDetector.js';
  * FuApp - Happy Birthday 3D Text Application
  * 
  * Features:
- * - 3D text "Happy Birthday !" with emissive glow
- * - Four quadrant Pepper Ghost view
+ * - 3D text "Happy Birthday !" with emissive glow and bloom effect
+ * - Four quadrant Pepper Ghost view (no bloom)
+ * - Single view with bloom post-processing
  * - Double-tap detection
  * - Rotation control
  */
@@ -32,6 +36,15 @@ export class FuApp {
         
         // Model center
         this.modelCenter = new THREE.Vector3(0, 0, 0);
+        
+        // Post-processing
+        this.composer = null;
+        this.bloomPass = null;
+        
+        // Bloom parameters (constants)
+        this.BLOOM_STRENGTH = 1.5;
+        this.BLOOM_RADIUS = 0.4;
+        this.BLOOM_THRESHOLD = 0.2;
         
         // Initialize managers
         this.renderManager = new RenderManager(this.canvas);
@@ -54,6 +67,7 @@ export class FuApp {
         // Setup
         this.setupTapDetection();
         this.setupResizeHandling();
+        this.setupPostProcessing();
         this.setupControls();
         this.setupViewToggle();
         
@@ -75,6 +89,37 @@ export class FuApp {
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(ev => {
             document.addEventListener(ev, applyFsClass);
         });
+    }
+    
+    /**
+     * Setup post-processing with bloom effect
+     * Only used in single view mode
+     */
+    setupPostProcessing() {
+        const renderer = this.renderManager.getRenderer();
+        const scene = this.sceneManager.getScene();
+        const camera = this.cameraManager.getSingleCamera();
+        
+        // Create EffectComposer
+        this.composer = new EffectComposer(renderer);
+        
+        // Add render pass
+        const renderPass = new RenderPass(scene, camera);
+        this.composer.addPass(renderPass);
+        
+        // Add bloom pass
+        this.bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            this.BLOOM_STRENGTH,  // strength
+            this.BLOOM_RADIUS,    // radius
+            this.BLOOM_THRESHOLD  // threshold (only bright parts bloom)
+        );
+        this.composer.addPass(this.bloomPass);
+        
+        // Inject composer into RenderManager
+        this.renderManager.setComposer(this.composer);
+        
+        console.log('✅ Post-processing setup complete (Bloom enabled for single view)');
     }
     
     /**
@@ -110,7 +155,7 @@ export class FuApp {
             const material = new THREE.MeshStandardMaterial({
                 color: 0x1AFD9C,        // Cyan-green base color
                 emissive: 0x1AFD9C,     // Emissive glow (same color)
-                emissiveIntensity: 0.1, // Strong glow
+                emissiveIntensity: 0.2, // glow (default ON)
                 metalness: 0,
                 roughness: 0.4,
                 clearcoat: 1,            // Clearcoat layer
@@ -146,7 +191,7 @@ export class FuApp {
     }
     
     /**
-     * Toggle text emissive glow
+     * Toggle text emissive glow (works in both single and quadrant views)
      */
     toggleTextGlow() {
         if (!this.textMesh) return;
@@ -170,6 +215,12 @@ export class FuApp {
     setupResizeHandling() {
         this.renderManager.onResizeCallback((width, height) => {
             this.cameraManager.handleResize(width, height);
+            
+            // Update composer size if it exists
+            if (this.composer) {
+                this.composer.setSize(width, height);
+            }
+            
             console.log(`📱 Window resized to: ${width}x${height}`);
         });
     }
@@ -216,6 +267,18 @@ export class FuApp {
             distanceValue.textContent = distance.toFixed(1);
         });
         
+        // Bloom strength control (only affects single view)
+        const bloomStrengthSlider = document.getElementById('bloomStrength');
+        const bloomValue = document.getElementById('bloomValue');
+        
+        if (bloomStrengthSlider && bloomValue) {
+            bloomStrengthSlider.addEventListener('input', (e) => {
+                const strength = parseFloat(e.target.value);
+                this.setBloomStrength(strength);
+                bloomValue.textContent = strength.toFixed(1);
+            });
+        }
+        
         // Reset button
         const resetBtn = document.getElementById('resetBtn');
         resetBtn.addEventListener('click', () => {
@@ -250,6 +313,7 @@ export class FuApp {
     
     /**
      * Setup view toggle (quadrant/single)
+     * Single view uses bloom, quadrant view uses direct rendering
      */
     setupViewToggle() {
         const viewToggleBtn = document.getElementById('viewToggleBtn');
@@ -259,7 +323,7 @@ export class FuApp {
             this.renderManager.setViewMode(this.viewMode);
             viewToggleBtn.textContent = this.viewMode === 'quadrant' ? 'Single View' : 'Quadrant View';
             
-            console.log(`👁️  View mode: ${this.viewMode}`);
+            console.log(`👁️  View mode: ${this.viewMode} ${this.viewMode === 'single' ? '(Bloom ON)' : '(Bloom OFF)'}`);
         });
     }
     
@@ -278,6 +342,15 @@ export class FuApp {
         document.getElementById('distanceValue').textContent = '6.8';
         document.getElementById('rotationSpeed').value = 0.002;
         document.getElementById('speedValue').textContent = '0.002';
+        
+        // Reset bloom strength
+        const bloomStrengthSlider = document.getElementById('bloomStrength');
+        const bloomValue = document.getElementById('bloomValue');
+        if (bloomStrengthSlider && bloomValue) {
+            bloomStrengthSlider.value = this.BLOOM_STRENGTH;
+            bloomValue.textContent = this.BLOOM_STRENGTH.toFixed(1);
+            this.setBloomStrength(this.BLOOM_STRENGTH);
+        }
         
         console.log('🔄 Reset complete');
     }
@@ -327,10 +400,21 @@ export class FuApp {
     }
     
     /**
+     * Public API: Set bloom strength (for single view only)
+     * @param {number} value - Bloom strength (0-5)
+     */
+    setBloomStrength(value) {
+        if (this.bloomPass) {
+            this.bloomPass.strength = value;
+            console.log(`✨ Bloom strength set to: ${value}`);
+        }
+    }
+    
+    /**
      * Public API: Set brightness (for console control)
      */
     setBrightness(value) {
-        this.renderManager.setBrightness(value);
+        this.renderManager.setExposure(value);
         console.log(`💡 Brightness set to: ${value}`);
     }
 }
