@@ -16,7 +16,8 @@ import { TapDetector } from '../features/TapDetector.js';
  * - 3D text "Happy Birthday !" with emissive glow and bloom effect
  * - Four quadrant Pepper Ghost view (no bloom)
  * - Single view with bloom post-processing
- * - Double-tap detection
+ * - Required-tap detection for energy charging
+ * - Long press to reset
  * - Rotation control
  */
 export class FuApp {
@@ -184,7 +185,7 @@ export class FuApp {
             scene.add(this.textMesh);
             
             console.log('✅ 3D text created (hidden, waiting for energy charge)');
-            console.log('👆 Double-tap 3 times: Green → Blue → Merge!');
+            console.log('👆 Tap 3 times: Green → Blue → Merge!');
             
             // Update camera to look at text center
             this.cameraManager.setLookAtTarget(this.modelCenter);
@@ -242,16 +243,22 @@ export class FuApp {
         }
         
         console.log('✅ Energy orbs created (Red orb visible, waiting for taps)');
-        console.log('👆 Double-tap 2 times to spawn Green & Blue orbs, then tap again to merge!');
+        console.log('👆 Tap 3 times to spawn Green → Blue → Merge!');
     }
     
     /**
      * Setup tap detection
-     * Double-tap charges energy orbs
+     * Required-tap charges energy orbs
      */
     setupTapDetection() {
-        this.tapDetector.on('double-tap', (event) => {
+        this.tapDetector.on('required-tap', (event) => {
             this.onTapCharge();
+        });
+        
+        // Long press to reset entire sequence
+        this.tapDetector.on('long-press', () => {
+            console.log('⏱️ Long press detected! Resetting energy sequence...');
+            this.resetEnergySequence();
         });
     }
     
@@ -430,6 +437,50 @@ export class FuApp {
         ];
         
         navigator.vibrate(patterns[tapCount - 1]);
+    }
+    
+    /**
+     * Reset energy sequence to initial state
+     * Called by long press
+     */
+    resetEnergySequence() {
+        // Reset state
+        this.tapCount = 0;
+        this.isRevealed = false;
+        this.isAnimating = false;
+        this.isExploding = false;
+        this.animationTime = 0;
+        
+        // Hide text
+        if (this.textMesh) {
+            this.textMesh.visible = false;
+            this.textMesh.scale.set(1, 1, 1);
+            this.textMesh.material.emissiveIntensity = 1.5;
+        }
+        
+        // Reset all orbs
+        this.energyOrbs.forEach((orb, index) => {
+            orb.visible = (index === 0); // Only first orb visible
+            orb.scale.set(1, 1, 1);
+            orb.material.emissiveIntensity = 2;
+            
+            // Reset positions
+            const angle = (index / 3) * Math.PI * 2 - Math.PI / 2;
+            const radius = 3;
+            orb.position.set(
+                Math.cos(angle) * radius,
+                0,
+                Math.sin(angle) * radius
+            );
+        });
+        
+        console.log('🔄 Energy sequence reset! Ready to tap again.');
+        console.log('👆 Tap 3 times to spawn Green → Blue → Merge!');
+        
+        // Haptic feedback
+        if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+        }
     }
     
     // Easing functions
@@ -623,7 +674,7 @@ export class FuApp {
         }
         
         console.log('✅ Reset complete - Back to initial state (Red orb only)');
-        console.log('👆 Double-tap 3 times: Green → Blue → Merge!');
+        console.log('👆 Tap 3 times: Green → Blue → Merge!');
     }
     
     /**

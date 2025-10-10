@@ -1,16 +1,21 @@
 /**
- * TapDetector - Detects double tap gestures via device motion sensors and pointer events
+ * TapDetector - Detects tap gestures and long press via device motion sensors and pointer events
  * 
  * Monitors accelerometer data to detect physical taps on the surface
  * where the device is placed (e.g., tablet on a table) and also detects
  * direct pointer events on the screen (mouse, touch, pen).
+ * 
+ * Supports two gesture types:
+ * 1. Required-tap: Multiple taps within a time window (configurable count)
+ * 2. Long-press: Holding pointer down for 5 seconds
  * 
  * Usage:
  *   const canvas = renderer.domElement;
  *   const detector = new TapDetector({ targetElement: canvas });
  *   await detector.requestPermission(); // Required for iOS
  *   detector.start();
- *   detector.on('double-tap', () => console.log('Double tap detected!'));
+ *   detector.on('required-tap', () => console.log('Required taps detected!'));
+ *   detector.on('long-press', () => console.log('Long press detected!'));
  */
 export class TapDetector {
     constructor(options = {}) {
@@ -20,15 +25,27 @@ export class TapDetector {
             tapWindow: options.tapWindow || 600,       // Max time between taps (ms)
             cooldown: options.cooldown || 300,         // Min time between taps (ms)
             requiredTaps: options.requiredTaps || 3,   // Number of taps to detect
+            longPressDuration: options.longPressDuration || 5000, // Long press duration (ms)
             debugMode: options.debugMode !== false     // Enable debug logging by default
         };
         
         // Target elements for event binding
         this.targetElement = options.targetElement || document;  // Pointer events target
         
-        // State
+        // Tap state
         this.tapTimestamps = [];                       // Recent tap timestamps
         this.lastTapTime = 0;                          // Last detected tap time
+        
+        // Long press state
+        this.longPressState = {
+            startTime: null,                           // Long press start timestamp
+            pointerId: null,                           // Pointer ID tracking
+            timer: null,                               // Timeout timer
+            isActive: false,                           // Long press in progress
+            startPosition: null                        // Initial pointer position
+        };
+        
+        // Detection state
         this.isActive = false;                         // Detection active flag
         this.listeners = {};                           // Event listeners
         
@@ -40,6 +57,8 @@ export class TapDetector {
         // Bind methods
         this.handleMotion = this.handleMotion.bind(this);
         this.handlePointer = this.handlePointer.bind(this);
+        this.handlePointerUp = this.handlePointerUp.bind(this);
+        this.handlePointerCancel = this.handlePointerCancel.bind(this);
     }
     
     /**
@@ -82,11 +101,14 @@ export class TapDetector {
         
         window.addEventListener('devicemotion', this.handleMotion);
         this.targetElement.addEventListener('pointerdown', this.handlePointer);
+        this.targetElement.addEventListener('pointerup', this.handlePointerUp);
+        this.targetElement.addEventListener('pointercancel', this.handlePointerCancel);
         this.isActive = true;
         console.log('🎯 TapDetector started');
         console.log(`   Threshold: ${this.config.threshold} (delta from baseline)`);
         console.log(`   Tap window: ${this.config.tapWindow}ms`);
         console.log(`   Required taps: ${this.config.requiredTaps}`);
+        console.log(`   Long press: ${this.config.longPressDuration}ms`);
         console.log(`   🔍 Calibrating baseline... (please keep device still)`);
     }
     
@@ -96,6 +118,9 @@ export class TapDetector {
     stop() {
         window.removeEventListener('devicemotion', this.handleMotion);
         this.targetElement.removeEventListener('pointerdown', this.handlePointer);
+        this.targetElement.removeEventListener('pointerup', this.handlePointerUp);
+        this.targetElement.removeEventListener('pointercancel', this.handlePointerCancel);
+        this.clearLongPress();
         this.isActive = false;
         this.tapTimestamps = [];
         this.isCalibrated = false;
@@ -140,9 +165,9 @@ export class TapDetector {
         
         console.log(`👆 TAP from ${source}! (${this.tapTimestamps.length}/${this.config.requiredTaps})`);
         
-        // Check if we have enough taps for double tap
+        // Check if we have enough taps for required-tap event
         if (this.tapTimestamps.length >= this.config.requiredTaps) {
-            this.handleDoubleTap();
+            this.handleRequiredTap();
         }
         
         return true;
@@ -201,28 +226,114 @@ export class TapDetector {
     
     /**
      * Handle pointer down event (mouse, touch, pen)
+     * Starts both tap detection and long press timer
      * @param {PointerEvent} event
      */
     handlePointer(event) {
-        // Don't prevent default - let other handlers work
-        // event.preventDefault();
+        const pointerType = event.pointerType || 'unknown';
         
         // Record tap from pointer source
-        const pointerType = event.pointerType || 'unknown';
         this.recordTap(`pointer:${pointerType}`);
+        
+        // Start long press detection
+        this.startLongPress(event);
     }
     
     /**
-     * Handle double tap detection
+     * Handle pointer up event - completes or cancels long press
+     * @param {PointerEvent} event
      */
-    handleDoubleTap() {
-        console.log('🎉 DOUBLE TAP DETECTED!');
+    handlePointerUp(event) {
+        // Clear long press if it matches the tracked pointer
+        if (this.longPressState.isActive && 
+            this.longPressState.pointerId === event.pointerId) {
+            this.clearLongPress();
+        }
+    }
+    
+    /**
+     * Handle pointer cancel event - cancels long press
+     * @param {PointerEvent} event
+     */
+    handlePointerCancel(event) {
+        // Clear long press if it matches the tracked pointer
+        if (this.longPressState.isActive && 
+            this.longPressState.pointerId === event.pointerId) {
+            this.clearLongPress();
+        }
+    }
+    
+    /**
+     * Start long press detection
+     * @param {PointerEvent} event
+     */
+    startLongPress(event) {
+        // Clear any existing long press
+        this.clearLongPress();
+        
+        const now = Date.now();
+        
+        this.longPressState = {
+            startTime: now,
+            pointerId: event.pointerId,
+            isActive: true,
+            startPosition: { x: event.clientX, y: event.clientY },
+            timer: setTimeout(() => {
+                this.handleLongPress();
+            }, this.config.longPressDuration)
+        };
+        
+        if (this.config.debugMode) {
+            console.log(`👇 Long press started (${this.config.longPressDuration}ms)...`);
+        }
+    }
+    
+    /**
+     * Clear long press state and timer
+     */
+    clearLongPress() {
+        if (this.longPressState.timer) {
+            clearTimeout(this.longPressState.timer);
+            
+            if (this.config.debugMode && this.longPressState.isActive) {
+                const duration = Date.now() - this.longPressState.startTime;
+                console.log(`👆 Long press cancelled (${duration}ms)`);
+            }
+        }
+        
+        this.longPressState = {
+            startTime: null,
+            pointerId: null,
+            timer: null,
+            isActive: false,
+            startPosition: null
+        };
+    }
+    
+    /**
+     * Handle long press detection
+     */
+    handleLongPress() {
+        console.log('⏱️ LONG PRESS DETECTED!');
+        
+        // Clear state
+        this.longPressState.isActive = false;
+        
+        // Emit event
+        this.emit('long-press');
+    }
+    
+    /**
+     * Handle required-tap detection
+     */
+    handleRequiredTap() {
+        console.log('🎉 REQUIRED-TAP DETECTED!');
         
         // Clear timestamps to avoid repeated triggers
         this.tapTimestamps = [];
         
         // Emit event
-        this.emit('double-tap');
+        this.emit('required-tap');
     }
     
     /**

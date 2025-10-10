@@ -172,14 +172,29 @@ export class PepperGhostApp {
     }
     
     setupTapDetection() {
-        // Listen for double tap events
-        this.tapDetector.on('double-tap', () => {
-            console.log('🎯 Double tap detected! Switching to next shape...');
+        // Listen for required-tap events
+        this.tapDetector.on('required-tap', () => {
+            console.log('🎯 Required-tap detected! Switching to next shape...');
             this.cycleToNextShape();
+        });
+        
+        // Long press to reset to default shape
+        this.tapDetector.on('long-press', () => {
+            console.log('⏱️ Long press detected! Resetting to default shape...');
+            this.resetToDefault();
         });
         
         // Log detector status on startup
         console.log('🎯 TapDetector initialized:', this.tapDetector.getStatus());
+    }
+    
+    resetToDefault() {
+        const shapeSelect = document.getElementById('shapeSelect');
+        if (shapeSelect) {
+            shapeSelect.value = 'torusKnot';
+            this.sceneManager.updateMesh('torusKnot');
+            console.log('🔄 Reset to default shape: torusKnot');
+        }
     }
     
     cycleToNextShape() {

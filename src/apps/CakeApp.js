@@ -11,7 +11,7 @@ import { FlameEffect } from '../features/FlameEffect.js';
  * Features:
  * - Load fixed cake.glb model
  * - Add flame effect at candle position
- * - Support double-tap/button to extinguish flame
+ * - Support required-tap/button to extinguish flame
  * - Retain most features from index.html (except model switching)
  */
 export class CakeApp {
@@ -440,9 +440,9 @@ export class CakeApp {
     }
     
     setupTapDetection() {
-        // Double tap to toggle flame state
-        this.tapDetector.on('double-tap', () => {
-            console.log('🎯 Double tap detected! Toggling flame...');
+        // Required-tap to toggle flame state
+        this.tapDetector.on('required-tap', () => {
+            console.log('🎯 Required-tap detected! Toggling flame...');
             
             if (this.flameEffect) {
                 this.flameEffect.toggle();
@@ -458,6 +458,11 @@ export class CakeApp {
                     }
                 }
             }
+        });
+        
+        // Long press to reset (future feature)
+        this.tapDetector.on('long-press', () => {
+            console.log('⏱️ Long press detected! Reset feature coming soon...');
         });
         
         console.log('🎯 TapDetector initialized:', this.tapDetector.getStatus());
