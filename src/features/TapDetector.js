@@ -1,9 +1,9 @@
 /**
- * TapDetector - Detects double tap gestures via device motion sensors and touch events
+ * TapDetector - Detects double tap gestures via device motion sensors and pointer events
  * 
  * Monitors accelerometer data to detect physical taps on the surface
  * where the device is placed (e.g., tablet on a table) and also detects
- * direct touch events on the screen.
+ * direct pointer events on the screen (mouse, touch, pen).
  * 
  * Usage:
  *   const canvas = renderer.domElement;
@@ -24,7 +24,7 @@ export class TapDetector {
         };
         
         // Target elements for event binding
-        this.targetElement = options.targetElement || document;  // Touch events target
+        this.targetElement = options.targetElement || document;  // Pointer events target
         
         // State
         this.tapTimestamps = [];                       // Recent tap timestamps
@@ -39,7 +39,7 @@ export class TapDetector {
         
         // Bind methods
         this.handleMotion = this.handleMotion.bind(this);
-        this.handleTouch = this.handleTouch.bind(this);
+        this.handlePointer = this.handlePointer.bind(this);
     }
     
     /**
@@ -81,7 +81,7 @@ export class TapDetector {
         }
         
         window.addEventListener('devicemotion', this.handleMotion);
-        this.targetElement.addEventListener('touchstart', this.handleTouch);
+        this.targetElement.addEventListener('pointerdown', this.handlePointer);
         this.isActive = true;
         console.log('🎯 TapDetector started');
         console.log(`   Threshold: ${this.config.threshold} (delta from baseline)`);
@@ -91,11 +91,11 @@ export class TapDetector {
     }
     
     /**
-     * Stop listening for device motion and touch events
+     * Stop listening for device motion and pointer events
      */
     stop() {
         window.removeEventListener('devicemotion', this.handleMotion);
-        this.targetElement.removeEventListener('touchstart', this.handleTouch);
+        this.targetElement.removeEventListener('pointerdown', this.handlePointer);
         this.isActive = false;
         this.tapTimestamps = [];
         this.isCalibrated = false;
@@ -200,15 +200,16 @@ export class TapDetector {
     }
     
     /**
-     * Handle touch start event
-     * @param {TouchEvent} event
+     * Handle pointer down event (mouse, touch, pen)
+     * @param {PointerEvent} event
      */
-    handleTouch(event) {
-        // Prevent default to avoid conflicts with other touch handlers
-        event.preventDefault();
+    handlePointer(event) {
+        // Don't prevent default - let other handlers work
+        // event.preventDefault();
         
-        // Record tap from touch source
-        this.recordTap('touch');
+        // Record tap from pointer source
+        const pointerType = event.pointerType || 'unknown';
+        this.recordTap(`pointer:${pointerType}`);
     }
     
     /**

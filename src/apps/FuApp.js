@@ -28,13 +28,20 @@ export class FuApp {
             return;
         }
         
-        this.isAnimating = true;  // Auto-start animations for greeting
+        // Energy charging state
+        this.tapCount = 0;           // Tap counter (0-2, triggering 2nd and 3rd orbs)
+        this.isRevealed = false;     // Text fully revealed flag
+        this.isAnimating = false;    // Animation starts after reveal
+        this.isExploding = false;    // Explosion animation in progress
         
         // Animation time for dynamic effects
         this.animationTime = 0;
         
         // Text mesh reference
         this.textMesh = null;
+        
+        // Energy orbs (3 spheres)
+        this.energyOrbs = [];
         
         // Model center
         this.modelCenter = new THREE.Vector3(0, 0, 0);
@@ -73,7 +80,10 @@ export class FuApp {
         this.setupControls();
         this.setupViewToggle();
         
-        // Create 3D text
+        // Create energy orbs (hidden initially)
+        this.createEnergyOrbs();
+        
+        // Create 3D text (hidden initially)
         this.create3DText();
         
         // Start animation loop
@@ -126,6 +136,7 @@ export class FuApp {
     
     /**
      * Create 3D text with emissive glow
+     * Initially hidden, revealed after 3 taps
      */
     async create3DText() {
         console.log('📝 Creating 3D text...');
@@ -166,12 +177,14 @@ export class FuApp {
             
             // Create mesh
             this.textMesh = new THREE.Mesh(geometry, material);
+            this.textMesh.visible = false;  // Hidden until explosion
             
             // Add to scene through SceneManager
             const scene = this.sceneManager.getScene();
             scene.add(this.textMesh);
             
-            console.log('✅ 3D text created successfully');
+            console.log('✅ 3D text created (hidden, waiting for energy charge)');
+            console.log('👆 Double-tap 3 times: Green → Blue → Merge!');
             
             // Update camera to look at text center
             this.cameraManager.setLookAtTarget(this.modelCenter);
@@ -183,12 +196,251 @@ export class FuApp {
     }
     
     /**
+     * Create 3 energy orbs (RGB spheres)
+     * Position: triangular formation around center
+     * Red orb visible by default
+     */
+    createEnergyOrbs() {
+        const scene = this.sceneManager.getScene();
+        const radius = 0.15;  // Orb size
+        const distance = 1.2; // Distance from center
+        
+        // RGB colors for 3 orbs
+        const colors = [0xff0000, 0x00ff00, 0x0000ff];  // Red, Green, Blue
+        const angles = [0, 120, 240];  // 120° apart
+        
+        for (let i = 0; i < 3; i++) {
+            // Create sphere geometry
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            
+            // Create emissive material
+            const material = new THREE.MeshStandardMaterial({
+                color: colors[i],
+                emissive: colors[i],
+                emissiveIntensity: 2,  // Strong glow
+                metalness: 0,
+                roughness: 0.2,
+            });
+            
+            const orb = new THREE.Mesh(geometry, material);
+            
+            // Position in triangular formation
+            const angleRad = (angles[i] * Math.PI) / 180;
+            orb.userData.homePosition = new THREE.Vector3(
+                Math.cos(angleRad) * distance,
+                0,
+                Math.sin(angleRad) * distance
+            );
+            
+            orb.position.copy(orb.userData.homePosition);
+            orb.visible = (i === 0);  // Only red orb visible initially
+            orb.userData.orbIndex = i;
+            orb.userData.rotationSpeed = 0.5 + i * 0.3;  // Different speeds
+            
+            this.energyOrbs.push(orb);
+            scene.add(orb);
+        }
+        
+        console.log('✅ Energy orbs created (Red orb visible, waiting for taps)');
+        console.log('👆 Double-tap 2 times to spawn Green & Blue orbs, then tap again to merge!');
+    }
+    
+    /**
      * Setup tap detection
+     * Double-tap charges energy orbs
      */
     setupTapDetection() {
         this.tapDetector.on('double-tap', (event) => {
-            console.log('🎯 Double tap detected!');
+            this.onTapCharge();
         });
+    }
+    
+    /**
+     * Handle tap charging sequence
+     * Tap 1: Show green orb, Tap 2: Show blue orb, Tap 3: Explosion -> Text reveal
+     */
+    onTapCharge() {
+        if (this.isRevealed || this.isExploding) {
+            console.log('✨ Already revealed or explosion in progress');
+            return;
+        }
+        
+        this.tapCount++;
+        console.log(`⚡ Energy charge: Tap ${this.tapCount}/3`);
+        
+        if (this.tapCount === 1) {
+            // First tap: Show green orb (index 1)
+            this.showOrb(1);
+            this.playHapticFeedback(1);
+        } else if (this.tapCount === 2) {
+            // Second tap: Show blue orb (index 2)
+            this.showOrb(2);
+            this.playHapticFeedback(2);
+        } else if (this.tapCount === 3) {
+            // Third tap: Trigger explosion
+            this.playHapticFeedback(3);
+            setTimeout(() => {
+                this.triggerExplosion();
+            }, 500);  // Small delay for dramatic effect
+        }
+    }
+    
+    /**
+     * Show energy orb with spawn animation
+     */
+    showOrb(index) {
+        if (index >= this.energyOrbs.length) return;
+        
+        const orb = this.energyOrbs[index];
+        orb.visible = true;
+        orb.scale.set(0, 0, 0);  // Start from zero
+        
+        // Animate scale up
+        const startTime = Date.now();
+        const duration = 300;
+        
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const scale = this.easeOutBack(progress);
+            
+            orb.scale.setScalar(scale);
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+        
+        animate();
+        console.log(`🔮 Orb ${index + 1} spawned (${['Red', 'Green', 'Blue'][index]})`);
+    }
+    
+    /**
+     * Trigger explosion animation
+     * Orbs converge to center -> Flash -> Text appears
+     */
+    triggerExplosion() {
+        console.log('💥 Triggering explosion sequence...');
+        this.isExploding = true;
+        
+        const startTime = Date.now();
+        const convergeDuration = 500;  // 0.5s to converge
+        const flashDuration = 100;     // 0.1s flash
+        
+        // Store initial positions
+        const initialPositions = this.energyOrbs.map(orb => orb.position.clone());
+        
+        // Convergence animation
+        const convergeAnimation = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / convergeDuration, 1);
+            const eased = this.easeInCubic(progress);
+            
+            // Move orbs toward center
+            this.energyOrbs.forEach((orb, i) => {
+                orb.position.lerpVectors(
+                    initialPositions[i],
+                    new THREE.Vector3(0, 0, 0),
+                    eased
+                );
+                
+                // Increase glow as they converge
+                orb.material.emissiveIntensity = 2 + eased * 5;
+            });
+            
+            if (progress < 1) {
+                requestAnimationFrame(convergeAnimation);
+            } else {
+                // Convergence complete -> Flash
+                this.flashExplosion();
+            }
+        };
+        
+        convergeAnimation();
+    }
+    
+    /**
+     * Flash effect and reveal text
+     * Fixed: Avoid white screen flash, use smooth transition
+     */
+    flashExplosion() {
+        const scene = this.sceneManager.getScene();
+        
+        // Hide orbs immediately (no white flash)
+        this.energyOrbs.forEach(orb => {
+            orb.visible = false;
+        });
+        
+        // Show text with explosion effect
+        if (this.textMesh) {
+            this.textMesh.visible = true;
+            this.textMesh.scale.set(0, 0, 0);  // Start small
+            
+            // Boost emissive for initial flash effect (instead of white screen)
+            const originalEmissive = this.textMesh.material.emissiveIntensity;
+            this.textMesh.material.emissiveIntensity = 3;  // Bright flash from text itself
+            
+            // Explosive scale-up animation
+            const startTime = Date.now();
+            const duration = 400;
+            
+            const scaleUp = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const scale = this.easeOutBack(progress);
+                
+                this.textMesh.scale.setScalar(scale);
+                
+                // Fade emissive back to normal
+                this.textMesh.material.emissiveIntensity = 3 - (progress * (3 - originalEmissive));
+                
+                if (progress < 1) {
+                    requestAnimationFrame(scaleUp);
+                } else {
+                    // Animation complete
+                    this.textMesh.material.emissiveIntensity = originalEmissive;
+                    this.isAnimating = true;  // Start breathing animation
+                    this.isRevealed = true;
+                    this.isExploding = false;
+                    console.log('🎉 Text revealed! Animation started.');
+                }
+            };
+            
+            scaleUp();
+        }
+        
+        // Strong haptic feedback
+        if (navigator.vibrate) {
+            navigator.vibrate([100, 50, 100, 50, 200]);
+        }
+        
+        console.log('💥 EXPLOSION! Text revealed!');
+    }
+    
+    /**
+     * Play haptic feedback based on tap count
+     */
+    playHapticFeedback(tapCount) {
+        if (!navigator.vibrate) return;
+        
+        const patterns = [
+            [50],                  // Tap 1: Short
+            [50, 30, 50],          // Tap 2: Double
+            [100, 50, 100]         // Tap 3: Triple (pre-explosion)
+        ];
+        
+        navigator.vibrate(patterns[tapCount - 1]);
+    }
+    
+    // Easing functions
+    easeOutBack(t) {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+    
+    easeInCubic(t) {
+        return t * t * t;
     }
     
     /**
@@ -311,21 +563,55 @@ export class FuApp {
     
     /**
      * Reset camera and animation state
+     * Returns to initial state: Only red orb visible
      */
     reset() {
-        this.cameraManager.reset();
+        console.log('🔄 Reset triggered...');
         
         // Reset animation time and transforms
         this.animationTime = 0;
+        
+        // Reset text
         if (this.textMesh) {
             this.textMesh.rotation.set(0, 0, 0);
             this.textMesh.scale.setScalar(1);
             this.textMesh.position.set(0, 0, 0);
+            this.textMesh.visible = false;  // Hide text
+            this.textMesh.material.emissiveIntensity = 0.1;  // Reset emissive
+            console.log('  ✓ Text hidden');
         }
         
+        // Reset energy orbs to initial state
+        if (this.energyOrbs && this.energyOrbs.length === 3) {
+            this.energyOrbs.forEach((orb, i) => {
+                orb.visible = (i === 0);  // Only red orb visible
+                orb.position.copy(orb.userData.homePosition);
+                orb.scale.setScalar(1);
+                orb.material.emissiveIntensity = 2;
+                
+                if (i === 0) {
+                    console.log(`  ✓ Red orb visible at position:`, orb.position);
+                } else {
+                    console.log(`  ✓ ${['', 'Green', 'Blue'][i]} orb hidden`);
+                }
+            });
+        } else {
+            console.warn('  ⚠️  Energy orbs not ready yet');
+        }
+        
+        // Reset charging state
+        this.tapCount = 0;
+        this.isRevealed = false;
+        this.isAnimating = false;
+        this.isExploding = false;
+        
         // Reset UI controls
-        document.getElementById('cameraDistance').value = 6.8;
-        document.getElementById('distanceValue').textContent = '6.8';
+        const cameraDistanceSlider = document.getElementById('cameraDistance');
+        const distanceValue = document.getElementById('distanceValue');
+        if (cameraDistanceSlider && distanceValue) {
+            cameraDistanceSlider.value = 6.8;
+            distanceValue.textContent = '6.8';
+        }
         
         // Reset bloom strength
         const bloomStrengthSlider = document.getElementById('bloomStrength');
@@ -336,7 +622,8 @@ export class FuApp {
             this.setBloomStrength(this.BLOOM_STRENGTH);
         }
         
-        console.log('🔄 Reset complete');
+        console.log('✅ Reset complete - Back to initial state (Red orb only)');
+        console.log('👆 Double-tap 3 times: Green → Blue → Merge!');
     }
     
     /**
@@ -360,7 +647,28 @@ export class FuApp {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        if (this.isAnimating && this.textMesh) {
+        // Rotate visible orbs
+        if (!this.isExploding) {
+            this.energyOrbs.forEach((orb, i) => {
+                if (orb.visible) {
+                    // Orbit around center
+                    const speed = orb.userData.rotationSpeed;
+                    const angle = this.animationTime * speed;
+                    const distance = 1.2;
+                    
+                    const baseAngle = (i * 120 * Math.PI) / 180;
+                    orb.position.x = Math.cos(baseAngle + angle) * distance;
+                    orb.position.z = Math.sin(baseAngle + angle) * distance;
+                    orb.position.y = Math.sin(this.animationTime * 2 + i) * 0.2;  // Floating
+                    
+                    // Pulsing glow
+                    orb.material.emissiveIntensity = 2 + Math.sin(this.animationTime * 3 + i) * 0.5;
+                }
+            });
+        }
+        
+        // Text breathing animation (after reveal)
+        if (this.isAnimating && this.textMesh && this.textMesh.visible) {
             // Update animation time (~60fps)
             this.animationTime += 0.016;
             const t = this.animationTime;
@@ -374,6 +682,9 @@ export class FuApp {
             
             // Pulsing glow effect (synced with breathing)
             // this.textMesh.material.emissiveIntensity = 0.2 + 0.08 * Math.sin(t * 1.5);
+        } else if (!this.isAnimating) {
+            // Still update time for orb animations
+            this.animationTime += 0.016;
         }
         
         // Render
@@ -413,5 +724,27 @@ export class FuApp {
     setBrightness(value) {
         this.renderManager.setExposure(value);
         console.log(`💡 Brightness set to: ${value}`);
+    }
+    
+    /**
+     * Toggle text glow (emissive intensity)
+     * Keyboard shortcut: E
+     */
+    toggleTextGlow() {
+        if (!this.textMesh || !this.textMesh.visible) {
+            console.log('⚠️  Text not visible yet');
+            return;
+        }
+        
+        const material = this.textMesh.material;
+        const isGlowing = material.emissiveIntensity > 0.05;
+        
+        if (isGlowing) {
+            material.emissiveIntensity = 0;
+            console.log('💡 Text glow: OFF');
+        } else {
+            material.emissiveIntensity = 0.2;
+            console.log('💡 Text glow: ON');
+        }
     }
 }
