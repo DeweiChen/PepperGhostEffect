@@ -28,8 +28,10 @@ export class FuApp {
             return;
         }
         
-        this.rotationSpeed = 0.002;
-        this.isAnimating = false;
+        this.isAnimating = true;  // Auto-start animations for greeting
+        
+        // Animation time for dynamic effects
+        this.animationTime = 0;
         
         // Text mesh reference
         this.textMesh = null;
@@ -155,7 +157,7 @@ export class FuApp {
             const material = new THREE.MeshStandardMaterial({
                 color: 0x1AFD9C,        // Cyan-green base color
                 emissive: 0x1AFD9C,     // Emissive glow (same color)
-                emissiveIntensity: 0.2, // glow (default ON)
+                emissiveIntensity: 0.1, // glow (default ON)
                 metalness: 0,
                 roughness: 0.4,
                 clearcoat: 1,            // Clearcoat layer
@@ -184,29 +186,9 @@ export class FuApp {
      * Setup tap detection
      */
     setupTapDetection() {
-        this.tapDetector.on('doubleTap', (event) => {
+        this.tapDetector.on('double-tap', (event) => {
             console.log('🎯 Double tap detected!');
-            this.toggleTextGlow();
         });
-    }
-    
-    /**
-     * Toggle text emissive glow (works in both single and quadrant views)
-     */
-    toggleTextGlow() {
-        if (!this.textMesh) return;
-        
-        const material = this.textMesh.material;
-        
-        if (material.emissiveIntensity > 0) {
-            // Turn off glow
-            material.emissiveIntensity = 0;
-            console.log('💡 Glow OFF');
-        } else {
-            // Turn on glow
-            material.emissiveIntensity = 0.8;
-            console.log('✨ Glow ON');
-        }
     }
     
     /**
@@ -328,20 +310,22 @@ export class FuApp {
     }
     
     /**
-     * Reset camera and rotation
+     * Reset camera and animation state
      */
     reset() {
         this.cameraManager.reset();
         
+        // Reset animation time and transforms
+        this.animationTime = 0;
         if (this.textMesh) {
             this.textMesh.rotation.set(0, 0, 0);
+            this.textMesh.scale.setScalar(1);
+            this.textMesh.position.set(0, 0, 0);
         }
         
         // Reset UI controls
         document.getElementById('cameraDistance').value = 6.8;
         document.getElementById('distanceValue').textContent = '6.8';
-        document.getElementById('rotationSpeed').value = 0.002;
-        document.getElementById('speedValue').textContent = '0.002';
         
         // Reset bloom strength
         const bloomStrengthSlider = document.getElementById('bloomStrength');
@@ -377,7 +361,19 @@ export class FuApp {
         requestAnimationFrame(() => this.animate());
         
         if (this.isAnimating && this.textMesh) {
-            this.textMesh.rotation.y += this.rotationSpeed;
+            // Update animation time (~60fps)
+            this.animationTime += 0.016;
+            const t = this.animationTime;
+            
+            // Breathing scale effect (gentle size pulsing)
+            const scale = 1 + 0.04 * Math.sin(t * 1.5);
+            this.textMesh.scale.setScalar(scale);
+            
+            // Floating effect (gentle up and down motion)
+            this.textMesh.position.y = 0.3 * Math.sin(t * 1.5);
+            
+            // Pulsing glow effect (synced with breathing)
+            // this.textMesh.material.emissiveIntensity = 0.2 + 0.08 * Math.sin(t * 1.5);
         }
         
         // Render
