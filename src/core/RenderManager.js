@@ -63,7 +63,7 @@ export class RenderManager {
         this.resizeCallbacks.push(callback);
     }
     
-    renderQuadrants(scene, cameras) {
+    renderQuadrants(scene, cameras, composer = null) {
         if (!scene || !cameras || cameras.length !== 4) {
             console.error('❌ Invalid scene or cameras for rendering');
             return;
@@ -94,6 +94,9 @@ export class RenderManager {
         this.renderer.setScissor(0, 0, w, h);
         this.renderer.clear();
         
+        // Save original camera if using composer (to restore after rendering)
+        const originalCamera = composer ? composer.passes[0].camera : null;
+        
         // Render each quadrant
         for (let i = 0; i < 4; i++) {
             const viewport = viewports[i];
@@ -119,8 +122,20 @@ export class RenderManager {
             camera.aspect = viewport.width / viewport.height;
             camera.updateProjectionMatrix();
             
-            // Render scene
-            this.renderer.render(scene, camera);
+            // Render scene (use composer if provided for bloom effect)
+            if (composer) {
+                // Temporarily update composer camera for this quadrant
+                composer.passes[0].camera = camera;
+                composer.render();
+            } else {
+                // Direct rendering (legacy behavior)
+                this.renderer.render(scene, camera);
+            }
+        }
+        
+        // Restore original camera to avoid state pollution
+        if (composer && originalCamera) {
+            composer.passes[0].camera = originalCamera;
         }
     }
     

@@ -391,7 +391,8 @@ export class FuApp {
             } else {
                 this.renderManager.renderQuadrants(
                     this.sceneManager.getScene(),
-                    this.cameraManager.getCameras()
+                    this.cameraManager.getCameras(),
+                    this.composer  // ✅ Pass composer for bloom effect in quadrant view
                 );
             }
         } catch (error) {
