@@ -130,32 +130,6 @@
         }
         
         /* Special button styles */
-        #lightingToggleBtn {
-            width: 100%;
-            font-weight: normal;
-            padding: 6px 8px;
-            margin-bottom: 4px;
-            font-size: 11px;
-        }
-        
-        #lightingToggleBtn.ibl-mode {
-            background: rgba(0, 0, 0, 0.8);
-            border-color: rgba(100, 255, 100, 0.3);
-        }
-        
-        #lightingToggleBtn.ibl-mode:hover {
-            border-color: rgba(100, 255, 100, 0.5);
-        }
-        
-        #lightingToggleBtn.legacy-mode {
-            background: rgba(0, 0, 0, 0.8);
-            border-color: rgba(255, 180, 100, 0.3);
-        }
-        
-        #lightingToggleBtn.legacy-mode:hover {
-            border-color: rgba(255, 180, 100, 0.5);
-        }
-        
         #enableTapDetectionBtn {
             width: 100%;
             font-weight: normal;
@@ -172,6 +146,28 @@
         
         #enableTapDetectionBtn.active {
             background: rgba(0, 0, 0, 0.8);
+            border-color: rgba(100, 255, 100, 0.5);
+        }
+        
+        #quadrantModeBtn {
+            width: 100%;
+            font-weight: normal;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            border-color: rgba(100, 200, 255, 0.3);
+            font-size: 11px;
+        }
+        
+        #quadrantModeBtn:hover {
+            border-color: rgba(100, 200, 255, 0.5);
+        }
+        
+        #quadrantModeBtn.unified-mode {
+            border-color: rgba(100, 255, 100, 0.3);
+        }
+        
+        #quadrantModeBtn.unified-mode:hover {
             border-color: rgba(100, 255, 100, 0.5);
         }
         
@@ -230,8 +226,8 @@
             </div>
             
             <div class="control-group">
-                <button id="lightingToggleBtn" class="ibl-mode">
-                    💡 IBL Lighting (ModelViewer)
+                <button id="quadrantModeBtn" class="unified-mode">
+                    🔄 Switch to Pepper Ghost Mode
                 </button>
             </div>
             

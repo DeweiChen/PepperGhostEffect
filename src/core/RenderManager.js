@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 export class RenderManager {
     constructor(canvas) {
@@ -11,6 +14,7 @@ export class RenderManager {
         this.resizeCallbacks = [];
         this.viewMode = 'quadrant'; // 'quadrant' or 'single'
         this.composer = null; // Optional: EffectComposer for single view post-processing
+        this.quadrantComposers = []; // ✅ Four separate composers for quadrant mode (no state pollution)
         
         this.renderer = new THREE.WebGLRenderer({ 
             canvas, 
@@ -47,6 +51,16 @@ export class RenderManager {
         
         // Update pixel ratio if changed
         this.renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // ✅ Update all quadrant composers' render targets
+        this.quadrantComposers.forEach(composer => {
+            composer.setSize(newWidth, newHeight);
+        });
+        
+        // Update single view composer if exists
+        if (this.composer) {
+            this.composer.setSize(newWidth, newHeight);
+        }
         
         // Notify all registered callbacks
         this.resizeCallbacks.forEach(callback => {
@@ -94,10 +108,13 @@ export class RenderManager {
         this.renderer.setScissor(0, 0, w, h);
         this.renderer.clear();
         
-        // Save original camera if using composer (to restore after rendering)
-        const originalCamera = composer ? composer.passes[0].camera : null;
+        // ✅ If using bloom, ensure we have 4 independent composers (no state sharing)
+        if (composer && this.quadrantComposers.length === 0) {
+            console.warn('⚠️  Quadrant composers not initialized - creating them now');
+            this.initializeQuadrantComposers(scene, cameras, composer);
+        }
         
-        // Render each quadrant
+        // Render each quadrant with independent composer (zero state pollution)
         for (let i = 0; i < 4; i++) {
             const viewport = viewports[i];
             const camera = cameras[i];
@@ -122,20 +139,13 @@ export class RenderManager {
             camera.aspect = viewport.width / viewport.height;
             camera.updateProjectionMatrix();
             
-            // Render scene (use composer if provided for bloom effect)
-            if (composer) {
-                // Temporarily update composer camera for this quadrant
-                composer.passes[0].camera = camera;
-                composer.render();
+            // ✅ Use independent composer per quadrant (never modify state)
+            if (composer && this.quadrantComposers[i]) {
+                this.quadrantComposers[i].render();
             } else {
-                // Direct rendering (legacy behavior)
+                // Direct rendering (no bloom)
                 this.renderer.render(scene, camera);
             }
-        }
-        
-        // Restore original camera to avoid state pollution
-        if (composer && originalCamera) {
-            composer.passes[0].camera = originalCamera;
         }
     }
     
@@ -219,5 +229,89 @@ export class RenderManager {
      */
     getComposer() {
         return this.composer;
+    }
+    
+    /**
+     * Initialize 4 independent composers for quadrant bloom rendering
+     * Each composer is permanently bound to one camera (zero state pollution)
+     * @param {THREE.Scene} scene - Scene to render
+     * @param {THREE.Camera[]} cameras - Array of 4 cameras
+     * @param {EffectComposer} referenceComposer - Reference composer to copy bloom settings from
+     */
+    initializeQuadrantComposers(scene, cameras, referenceComposer) {
+        // Clear any existing composers
+        this.quadrantComposers.forEach(c => c.dispose?.());
+        this.quadrantComposers = [];
+        
+        // Get bloom parameters from reference composer
+        let bloomStrength = 1.5;
+        let bloomRadius = 0.4;
+        let bloomThreshold = 0.1;
+        
+        if (referenceComposer) {
+            const bloomPass = referenceComposer.passes.find(pass => 
+                pass.constructor.name === 'UnrealBloomPass'
+            );
+            if (bloomPass) {
+                bloomStrength = bloomPass.strength;
+                bloomRadius = bloomPass.radius;
+                bloomThreshold = bloomPass.threshold;
+            }
+        }
+        
+        // Create 4 independent composers
+        for (let i = 0; i < 4; i++) {
+            const camera = cameras[i];
+            if (!camera) continue;
+            
+            // Create new EffectComposer for this quadrant
+            const composer = new EffectComposer(this.renderer);
+            
+            // Add render pass (permanently bound to this camera)
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+            
+            // Add bloom pass with same settings
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                bloomStrength,
+                bloomRadius,
+                bloomThreshold
+            );
+            composer.addPass(bloomPass);
+            
+            this.quadrantComposers.push(composer);
+        }
+        
+        console.log(`✅ Initialized 4 independent quadrant composers (bloom: strength=${bloomStrength}, radius=${bloomRadius}, threshold=${bloomThreshold})`);
+    }
+    
+    /**
+     * Update bloom settings for all quadrant composers
+     * @param {number} strength - Bloom strength
+     * @param {number} radius - Bloom radius  
+     * @param {number} threshold - Bloom threshold
+     */
+    updateQuadrantBloom(strength, radius, threshold) {
+        this.quadrantComposers.forEach((composer, i) => {
+            const bloomPass = composer.passes.find(pass => 
+                pass.constructor.name === 'UnrealBloomPass'
+            );
+            if (bloomPass) {
+                bloomPass.strength = strength;
+                bloomPass.radius = radius;
+                bloomPass.threshold = threshold;
+            }
+        });
+        console.log(`✅ Updated quadrant bloom: strength=${strength}, radius=${radius}, threshold=${threshold}`);
+    }
+    
+    /**
+     * Dispose quadrant composers (cleanup)
+     */
+    disposeQuadrantComposers() {
+        this.quadrantComposers.forEach(c => c.dispose?.());
+        this.quadrantComposers = [];
+        console.log('🗑️  Quadrant composers disposed');
     }
 }

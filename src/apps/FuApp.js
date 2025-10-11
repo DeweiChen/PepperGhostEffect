@@ -54,7 +54,7 @@ export class FuApp {
         // Bloom parameters (constants)
         this.BLOOM_STRENGTH = 1.5;
         this.BLOOM_RADIUS = 0.4;
-        this.BLOOM_THRESHOLD = 0.2;
+        this.BLOOM_THRESHOLD = 0.1;  // ✅ Works with emissiveIntensity 0.2
         
         // Audio system (unified sound with pitch variation)
         this.audioContext = null;
@@ -65,6 +65,9 @@ export class FuApp {
         this.renderManager = new RenderManager(this.canvas);
         this.sceneManager = new SceneManager(this.renderManager.getRenderer());
         this.cameraManager = new CameraManager(0, 6.8);  // Use horizontal angle (0°) for FuApp, distance 6.8
+        
+        // ✅ Set quadrant mode to unified-front (all cameras face same direction for 3D text)
+        this.cameraManager.setQuadrantMode('unified-front');
         
         // View mode state
         this.viewMode = 'quadrant';
@@ -138,7 +141,14 @@ export class FuApp {
         // Inject composer into RenderManager
         this.renderManager.setComposer(this.composer);
         
-        console.log('✅ Post-processing setup complete (Bloom enabled for single view)');
+        // ✅ Initialize 4 independent composers for quadrant mode (prevents state pollution)
+        this.renderManager.initializeQuadrantComposers(
+            scene,
+            this.cameraManager.getCameras(),
+            this.composer
+        );
+        
+        console.log('✅ Post-processing setup complete (Bloom enabled for both single and quadrant views)');
     }
     
     /**
@@ -276,7 +286,7 @@ export class FuApp {
             const material = new THREE.MeshStandardMaterial({
                 color: 0x1AFD9C,        // Cyan-green base color
                 emissive: 0x1AFD9C,     // Emissive glow (same color)
-                emissiveIntensity: 0.1, // glow (default ON)
+                emissiveIntensity: 0.2, // ✅ Unified: always 0.2
                 metalness: 0,
                 roughness: 0.4,
                 clearcoat: 1,            // Clearcoat layer
@@ -301,6 +311,27 @@ export class FuApp {
             console.error('❌ Failed to create 3D text:', error);
             alert(`Failed to create 3D text: ${error.message}`);
         }
+
+        // 🐛 Debug: Print text and bloom parameters
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('🐛 DEBUG: Text Material Properties');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log(`  emissiveIntensity: ${this.textMesh.material.emissiveIntensity}`);
+                    console.log(`  emissive color: #${this.textMesh.material.emissive.getHexString()}`);
+                    console.log(`  base color: #${this.textMesh.material.color.getHexString()}`);
+                    console.log(`  metalness: ${this.textMesh.material.metalness}`);
+                    console.log(`  roughness: ${this.textMesh.material.roughness}`);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('🐛 DEBUG: Bloom Pass Properties');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    if (this.bloomPass) {
+                        console.log(`  strength: ${this.bloomPass.strength}`);
+                        console.log(`  radius: ${this.bloomPass.radius}`);
+                        console.log(`  threshold: ${this.bloomPass.threshold}`);
+                    } else {
+                        console.log(`  ⚠️  Bloom pass not initialized`);
+                    }
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
     
     /**
@@ -494,7 +525,7 @@ export class FuApp {
             this.textMesh.scale.set(0, 0, 0);  // Start small
             
             // Boost emissive for initial flash effect (instead of white screen)
-            const originalEmissive = this.textMesh.material.emissiveIntensity;
+            const targetEmissive = 0.2;  // ✅ Target value (always 0.2)
             this.textMesh.material.emissiveIntensity = 3;  // Bright flash from text itself
             
             // Explosive scale-up animation
@@ -508,14 +539,14 @@ export class FuApp {
                 
                 this.textMesh.scale.setScalar(scale);
                 
-                // Fade emissive back to normal
-                this.textMesh.material.emissiveIntensity = 3 - (progress * (3 - originalEmissive));
+                // Fade emissive back to target 0.2
+                this.textMesh.material.emissiveIntensity = 3 - (progress * (3 - targetEmissive));
                 
                 if (progress < 1) {
                     requestAnimationFrame(scaleUp);
                 } else {
-                    // Animation complete
-                    this.textMesh.material.emissiveIntensity = originalEmissive;
+                    // Animation complete - ensure it's exactly 0.2
+                    this.textMesh.material.emissiveIntensity = targetEmissive;
                     this.isAnimating = true;  // Start breathing animation
                     this.isRevealed = true;
                     this.isExploding = false;
@@ -565,7 +596,7 @@ export class FuApp {
         if (this.textMesh) {
             this.textMesh.visible = false;
             this.textMesh.scale.set(1, 1, 1);
-            this.textMesh.material.emissiveIntensity = 1.5;
+            this.textMesh.material.emissiveIntensity = 0.2;  // ✅ Unified: always 0.2
         }
         
         // Reset all orbs
@@ -639,16 +670,31 @@ export class FuApp {
             }
         });
         
-        // Lighting mode toggle
-        const lightingToggleBtn = document.getElementById('lightingToggleBtn');
-        lightingToggleBtn.addEventListener('click', () => {
-            const newMode = this.sceneManager.toggleLightingMode();
-            if (newMode === 'ibl') {
-                lightingToggleBtn.textContent = '💡 IBL Lighting (ModelViewer)';
-                lightingToggleBtn.className = 'ibl-mode';
-            } else {
-                lightingToggleBtn.textContent = '💡 Legacy Lighting (Simple)';
-                lightingToggleBtn.className = 'legacy-mode';
+        // Lighting mode functionality preserved (call via window.app.sceneManager.toggleLightingMode())
+        
+        // Quadrant mode toggle (Unified Front / Pepper Ghost)
+        const quadrantModeBtn = document.getElementById('quadrantModeBtn');
+        quadrantModeBtn.addEventListener('click', () => {
+            const currentMode = this.cameraManager.getQuadrantMode();
+            const newMode = currentMode === 'unified-front' ? 'pepper-ghost' : 'unified-front';
+            
+            if (this.cameraManager.setQuadrantMode(newMode)) {
+                // ✅ Re-initialize quadrant composers with new camera setup
+                this.renderManager.initializeQuadrantComposers(
+                    this.sceneManager.getScene(),
+                    this.cameraManager.getCameras(),
+                    this.composer
+                );
+                
+                // Update button text and style
+                if (newMode === 'unified-front') {
+                    quadrantModeBtn.textContent = '🔄 Switch to Pepper Ghost Mode';
+                    quadrantModeBtn.className = 'unified-mode';
+                } else {
+                    quadrantModeBtn.textContent = '🔄 Switch to Unified Front Mode';
+                    quadrantModeBtn.className = 'pepper-ghost-mode';
+                }
+                console.log(`✅ Quadrant mode: ${newMode} (composers re-initialized)`);
             }
         });
         
@@ -738,7 +784,7 @@ export class FuApp {
             this.textMesh.scale.setScalar(1);
             this.textMesh.position.set(0, 0, 0);
             this.textMesh.visible = false;  // Hide text
-            this.textMesh.material.emissiveIntensity = 0.1;  // Reset emissive
+            this.textMesh.material.emissiveIntensity = 0.2;  // ✅ Unified: always 0.2
             console.log('  ✓ Text hidden');
         }
         
@@ -888,14 +934,18 @@ export class FuApp {
     }
     
     /**
-     * Public API: Set bloom strength (for single view only)
+     * Public API: Set bloom strength (for both single and quadrant views)
      * @param {number} value - Bloom strength (0-5)
      */
     setBloomStrength(value) {
         if (this.bloomPass) {
             this.bloomPass.strength = value;
-            console.log(`✨ Bloom strength set to: ${value}`);
         }
+        
+        // ✅ Also update all quadrant composers
+        this.renderManager.updateQuadrantBloom(value, this.BLOOM_RADIUS, this.BLOOM_THRESHOLD);
+        
+        console.log(`✨ Bloom strength set to: ${value} (both single and quadrant views)`);
     }
     
     /**
@@ -923,7 +973,7 @@ export class FuApp {
             material.emissiveIntensity = 0;
             console.log('💡 Text glow: OFF');
         } else {
-            material.emissiveIntensity = 0.2;
+            material.emissiveIntensity = 0.2;  // ✅ Unified: always 0.2
             console.log('💡 Text glow: ON');
         }
     }
