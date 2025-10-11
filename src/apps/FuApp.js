@@ -683,12 +683,31 @@ export class FuApp {
     toggleFullscreen() {
         const app = document.getElementById('app');
         
-        if (!document.fullscreenElement) {
-            app.requestFullscreen().catch(err => {
-                console.error('Fullscreen error:', err);
-            });
+        if (!document.fullscreenElement && 
+            !document.webkitFullscreenElement && 
+            !document.mozFullScreenElement && 
+            !document.msFullscreenElement) {
+            // Enter fullscreen
+            if (app.requestFullscreen) {
+                app.requestFullscreen();
+            } else if (app.webkitRequestFullscreen) { // Safari
+                app.webkitRequestFullscreen();
+            } else if (app.msRequestFullscreen) { // IE11
+                app.msRequestFullscreen();
+            }
+            // Fallback immediate add in case event is delayed / not firing on iOS
+            if (app) app.classList.add('fullscreen-mode');
         } else {
-            document.exitFullscreen();
+            // Exit fullscreen
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+            // Fallback immediate remove
+            if (app) app.classList.remove('fullscreen-mode');
         }
     }
     
