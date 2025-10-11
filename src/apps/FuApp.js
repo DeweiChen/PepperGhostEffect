@@ -13,12 +13,13 @@ import { TapDetector } from '../features/TapDetector.js';
  * FuApp - Happy Birthday 3D Text Application
  * 
  * Features:
- * - 3D text "Happy Birthday !" with emissive glow and bloom effect
- * - Four quadrant Pepper Ghost view (no bloom)
- * - Single view with bloom post-processing
- * - Required-tap detection for energy charging
+ * - Three floating 3D text orbs: "Fu", "Fu", "Rong" with RGB colors
+ * - 3D text "Happy Birthday Fu" revealed after explosion
+ * - Emissive glow and bloom post-processing
+ * - Four quadrant Pepper Ghost view + Single view with bloom
+ * - Tap detection for energy charging (3 taps to reveal)
  * - Long press to reset
- * - Rotation control
+ * - Dynamic rotation and floating animations
  */
 export class FuApp {
     constructor() {
@@ -41,7 +42,7 @@ export class FuApp {
         // Text mesh reference
         this.textMesh = null;
         
-        // Energy orbs (3 spheres)
+        // Energy orbs (3 text objects: Fu, Fu, Rong)
         this.energyOrbs = [];
         
         // Model center
@@ -90,10 +91,10 @@ export class FuApp {
         this.setupControls();
         this.setupViewToggle();
         
-        // Create energy orbs (hidden initially)
+        // Create energy text orbs (Fu, Fu, Rong - first one visible initially)
         this.createEnergyOrbs();
         
-        // Create 3D text (hidden initially)
+        // Create 3D text (hidden initially, revealed after explosion)
         this.create3DText();
         
         // Start animation loop
@@ -284,8 +285,8 @@ export class FuApp {
             
             // Create material with emissive glow
             const material = new THREE.MeshStandardMaterial({
-                color: 0x1AFD9C,        // Cyan-green base color
-                emissive: 0x1AFD9C,     // Emissive glow (same color)
+                color: 0x00CBA9,        // Teal base color (balanced brightness)
+                emissive: 0x00CBA9,     // Emissive glow (same color)
                 emissiveIntensity: 0.2, // ✅ Unified: always 0.2
                 metalness: 0,
                 roughness: 0.4,
@@ -311,52 +312,56 @@ export class FuApp {
             console.error('❌ Failed to create 3D text:', error);
             alert(`Failed to create 3D text: ${error.message}`);
         }
-
-        // 🐛 Debug: Print text and bloom parameters
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('🐛 DEBUG: Text Material Properties');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log(`  emissiveIntensity: ${this.textMesh.material.emissiveIntensity}`);
-                    console.log(`  emissive color: #${this.textMesh.material.emissive.getHexString()}`);
-                    console.log(`  base color: #${this.textMesh.material.color.getHexString()}`);
-                    console.log(`  metalness: ${this.textMesh.material.metalness}`);
-                    console.log(`  roughness: ${this.textMesh.material.roughness}`);
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('🐛 DEBUG: Bloom Pass Properties');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    if (this.bloomPass) {
-                        console.log(`  strength: ${this.bloomPass.strength}`);
-                        console.log(`  radius: ${this.bloomPass.radius}`);
-                        console.log(`  threshold: ${this.bloomPass.threshold}`);
-                    } else {
-                        console.log(`  ⚠️  Bloom pass not initialized`);
-                    }
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
     
     /**
-     * Create 3 energy orbs (RGB spheres)
+     * Create 3 energy orbs (Text: Fu, Fu, Rong)
      * Position: triangular formation around center
-     * Red orb visible by default
+     * First "Fu" visible by default
      */
-    createEnergyOrbs() {
+    async createEnergyOrbs() {
         const scene = this.sceneManager.getScene();
-        const radius = 0.15;  // Orb size
         const distance = 1.2; // Distance from center
         
-        // RGB colors for 3 orbs
-        const colors = [0xff0000, 0x00ff00, 0x0000ff];  // Red, Green, Blue
+        // Load font first
+        const loader = new FontLoader();
+        let font;
+        try {
+            font = await loader.loadAsync(
+                'https://cdn.jsdelivr.net/gh/DeweiChen/PepperGhostEffect/public/assets/fredoka_light_regular.json'
+            );
+        } catch (error) {
+            console.error('❌ Failed to load font for energy orbs:', error);
+            return;
+        }
+        
+        // Text labels for 3 orbs
+        const texts = ['Fu', 'Rong', 'Yang'];
+        const colors = [0x00CBA9, 0x4169E1, 0x9370DB];  // Teal (reduced brightness), Royal blue, Medium orchid
         const angles = [0, 120, 240];  // 120° apart
         
         for (let i = 0; i < 3; i++) {
-            // Create sphere geometry
-            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            // Create text geometry
+            const geometry = new TextGeometry(texts[i], {
+                font: font,
+                size: 1.0,
+                height: 0.05,
+                bevelEnabled: true,
+                bevelThickness: 0.01,
+                bevelSize: 0.02,
+                bevelOffset: 0,
+                bevelSegments: 5,
+                curveSegments: 12
+            });
+            
+            // Center the geometry
+            geometry.center();
             
             // Create emissive material
             const material = new THREE.MeshStandardMaterial({
                 color: colors[i],
                 emissive: colors[i],
-                emissiveIntensity: 2,  // Strong glow
+                emissiveIntensity: 1.0,  // Reduced glow for balanced brightness
                 metalness: 0,
                 roughness: 0.2,
             });
@@ -372,7 +377,7 @@ export class FuApp {
             );
             
             orb.position.copy(orb.userData.homePosition);
-            orb.visible = (i === 0);  // Only red orb visible initially
+            orb.visible = (i === 0);  // Only first text visible initially
             orb.userData.orbIndex = i;
             orb.userData.rotationSpeed = 0.5 + i * 0.3;  // Different speeds
             
@@ -380,8 +385,8 @@ export class FuApp {
             scene.add(orb);
         }
         
-        console.log('✅ Energy orbs created (Red orb visible, waiting for taps)');
-        console.log('👆 Tap 3 times to spawn Green → Blue → Merge!');
+        console.log('✅ Energy text orbs created (Fu, Fu, Rong)');
+        console.log('👆 Tap 3 times to spawn all texts → Merge!');
     }
     
     /**
@@ -402,7 +407,7 @@ export class FuApp {
     
     /**
      * Handle tap charging sequence
-     * Tap 1: Show green orb, Tap 2: Show blue orb, Tap 3: Explosion -> Text reveal
+     * Tap 1: Show green "Fu", Tap 2: Show blue "Rong", Tap 3: Explosion -> Text reveal
      */
     onTapCharge() {
         if (this.isRevealed || this.isExploding) {
@@ -414,12 +419,12 @@ export class FuApp {
         console.log(`⚡ Energy charge: Tap ${this.tapCount}/3`);
         
         if (this.tapCount === 1) {
-            // First tap: Show green orb (index 1)
+            // First tap: Show green "Fu" (index 1)
             this.showOrb(1);
             this.playSound(0.9, 0.4);  // Low pitch, soft volume
             this.playHapticFeedback(1);
         } else if (this.tapCount === 2) {
-            // Second tap: Show blue orb (index 2)
+            // Second tap: Show blue "Rong" (index 2)
             this.showOrb(2);
             this.playSound(1.1, 0.5);  // Mid pitch, normal volume
             this.playHapticFeedback(2);
@@ -460,7 +465,7 @@ export class FuApp {
         };
         
         animate();
-        console.log(`🔮 Orb ${index + 1} spawned (${['Red', 'Green', 'Blue'][index]})`);
+        console.log(`🔮 Text ${index + 1} spawned (${['Fu', 'Fu', 'Rong'][index]})`);
     }
     
     /**
@@ -601,9 +606,9 @@ export class FuApp {
         
         // Reset all orbs
         this.energyOrbs.forEach((orb, index) => {
-            orb.visible = (index === 0); // Only first orb visible
+            orb.visible = (index === 0); // Only first text visible
             orb.scale.set(1, 1, 1);
-            orb.material.emissiveIntensity = 2;
+            orb.material.emissiveIntensity = 1.0;  // Match initial intensity
             
             // Reset positions
             const angle = (index / 3) * Math.PI * 2 - Math.PI / 2;
@@ -616,7 +621,7 @@ export class FuApp {
         });
         
         console.log('🔄 Energy sequence reset! Ready to tap again.');
-        console.log('👆 Tap 3 times to spawn Green → Blue → Merge!');
+        console.log('👆 Tap 3 times to spawn Fu → Rong → Merge!');
         
         // Haptic feedback
         if (navigator.vibrate) {
@@ -791,19 +796,19 @@ export class FuApp {
         // Reset energy orbs to initial state
         if (this.energyOrbs && this.energyOrbs.length === 3) {
             this.energyOrbs.forEach((orb, i) => {
-                orb.visible = (i === 0);  // Only red orb visible
+                orb.visible = (i === 0);  // Only first text visible
                 orb.position.copy(orb.userData.homePosition);
                 orb.scale.setScalar(1);
-                orb.material.emissiveIntensity = 2;
+                orb.material.emissiveIntensity = 1.0;  // Match initial intensity
                 
                 if (i === 0) {
-                    console.log(`  ✓ Red orb visible at position:`, orb.position);
+                    console.log(`  ✓ First "Fu" text visible at position:`, orb.position);
                 } else {
-                    console.log(`  ✓ ${['', 'Green', 'Blue'][i]} orb hidden`);
+                    console.log(`  ✓ ${['', 'Fu (green)', 'Rong (blue)'][i]} text hidden`);
                 }
             });
         } else {
-            console.warn('  ⚠️  Energy orbs not ready yet');
+            console.warn('  ⚠️  Energy text orbs not ready yet');
         }
         
         // Reset charging state
@@ -887,8 +892,13 @@ export class FuApp {
                     orb.position.z = Math.sin(baseAngle + angle) * distance;
                     orb.position.y = Math.sin(this.animationTime * 2 + i) * 0.2;  // Floating
                     
-                    // Pulsing glow
-                    orb.material.emissiveIntensity = 2 + Math.sin(this.animationTime * 3 + i) * 0.5;
+                    // Billboard effect: Face forward (same direction as main text)
+                    // In unified-front mode, all text should face the same direction (+Z axis)
+                    // Reset rotation to face forward
+                    orb.rotation.set(0, 0, 0);
+                    
+                    // Pulsing glow (reduced intensity for balanced brightness)
+                    orb.material.emissiveIntensity = 1.0 + Math.sin(this.animationTime * 3 + i) * 0.3;
                 }
             });
         }
