@@ -56,6 +56,11 @@ export class FuApp {
         this.BLOOM_RADIUS = 0.4;
         this.BLOOM_THRESHOLD = 0.2;
         
+        // Audio system (unified sound with pitch variation)
+        this.audioContext = null;
+        this.audioBuffer = null;           // Charging sound (ID 156859)
+        this.explosionAudioBuffer = null;  // Explosion sound (ID 446111)
+        
         // Initialize managers
         this.renderManager = new RenderManager(this.canvas);
         this.sceneManager = new SceneManager(this.renderManager.getRenderer());
@@ -78,6 +83,7 @@ export class FuApp {
         this.setupTapDetection();
         this.setupResizeHandling();
         this.setupPostProcessing();
+        this.setupAudio();
         this.setupControls();
         this.setupViewToggle();
         
@@ -133,6 +139,107 @@ export class FuApp {
         this.renderManager.setComposer(this.composer);
         
         console.log('✅ Post-processing setup complete (Bloom enabled for single view)');
+    }
+    
+    /**
+     * Setup audio system with Web Audio API
+     * Uses a single sound with pitch variation for energy charging
+     * Sound: Freesound ID 156859 (Power Up Beep - electronic pulse)
+     */
+    setupAudio() {
+        try {
+            // Create AudioContext (iOS Safari compatible)
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Load charging sound from Freesound CDN
+            const chargeSoundUrl = 'https://cdn.jsdelivr.net/gh/DeweiChen/PepperGhostEffect/public/assets/charge.mp3';
+            
+            fetch(chargeSoundUrl)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => this.audioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    this.audioBuffer = audioBuffer;
+                    console.log('🔊 Charging sound loaded (Power Up Beep)');
+                })
+                .catch(err => {
+                    console.warn('⚠️  Charging sound loading failed (non-critical):', err);
+                });
+            
+            // Load explosion sound from Freesound CDN
+            const explosionSoundUrl = 'https://cdn.jsdelivr.net/gh/DeweiChen/PepperGhostEffect/public/assets/merge.mp3';
+            
+            fetch(explosionSoundUrl)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => this.audioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    this.explosionAudioBuffer = audioBuffer;
+                    console.log('💥 Explosion sound loaded');
+                })
+                .catch(err => {
+                    console.warn('⚠️  Explosion sound loading failed (non-critical):', err);
+                });
+                
+        } catch (e) {
+            console.warn('⚠️  Web Audio API not supported:', e);
+        }
+    }
+    
+    /**
+     * Play sound with pitch variation
+     * Used for energy orb charging feedback with progressive pitch increase
+     * @param {number} pitchRate - Playback rate (0.5 = lower pitch, 2.0 = higher pitch)
+     * @param {number} volume - Volume level (0.0 - 1.0)
+     */
+    playSound(pitchRate = 1.0, volume = 0.5) {
+        if (!this.audioBuffer || !this.audioContext) return;
+        
+        try {
+            // Create buffer source
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.audioBuffer;
+            source.playbackRate.value = pitchRate;
+            
+            // Create gain node for volume control
+            const gainNode = this.audioContext.createGain();
+            gainNode.gain.value = volume;
+            
+            // Connect: source → gain → destination (speakers)
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            // Play sound
+            source.start(0);
+        } catch (e) {
+            console.warn('⚠️  Sound playback failed:', e);
+        }
+    }
+    
+    /**
+     * Play explosion sound effect
+     * Used for final orb merge/explosion moment
+     * @param {number} volume - Volume level (0.0 - 1.0)
+     */
+    playExplosionSound(volume = 0.6) {
+        if (!this.explosionAudioBuffer || !this.audioContext) return;
+        
+        try {
+            // Create buffer source
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.explosionAudioBuffer;
+            
+            // Create gain node for volume control
+            const gainNode = this.audioContext.createGain();
+            gainNode.gain.value = volume;
+            
+            // Connect: source → gain → destination (speakers)
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            // Play explosion sound
+            source.start(0);
+        } catch (e) {
+            console.warn('⚠️  Explosion sound playback failed:', e);
+        }
     }
     
     /**
@@ -278,15 +385,18 @@ export class FuApp {
         if (this.tapCount === 1) {
             // First tap: Show green orb (index 1)
             this.showOrb(1);
+            this.playSound(0.9, 0.4);  // Low pitch, soft volume
             this.playHapticFeedback(1);
         } else if (this.tapCount === 2) {
             // Second tap: Show blue orb (index 2)
             this.showOrb(2);
+            this.playSound(1.1, 0.5);  // Mid pitch, normal volume
             this.playHapticFeedback(2);
         } else if (this.tapCount === 3) {
             // Third tap: Trigger explosion
             this.playHapticFeedback(3);
             setTimeout(() => {
+                this.playExplosionSound(0.6);  // Play explosion sound (ID 446111)
                 this.triggerExplosion();
             }, 500);  // Small delay for dramatic effect
         }
